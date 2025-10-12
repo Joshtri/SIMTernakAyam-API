@@ -1,0 +1,6 @@
+@SIMTernakAyam_HostAddress = http://localhost:5164
+
+GET {{SIMTernakAyam_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
