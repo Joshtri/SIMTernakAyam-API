@@ -21,7 +21,7 @@ namespace SIMTernakAyam.Controllers
         {
             try
             {
-                var ayams = await _ayamService.GetAllAsync();
+                var ayams = await _ayamService.GetAllAyamWithDetailsAsync();
                 var response = AyamResponseDto.FromEntities(ayams);
                 return Success(response, "Berhasil mengambil semua data ayam.");
             }
