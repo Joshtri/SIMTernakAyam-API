@@ -17,11 +17,26 @@ namespace SIMTernakAyam.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<KandangResponseDto>>), 200)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] string? search = null)
         {
             try
             {
                 var kandangs = await _kandangService.GetAllAsync();
+
+                // Apply search filter if provided
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var s = search.Trim();
+                    kandangs = kandangs.Where(k =>
+                        k.NamaKandang.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                        k.Lokasi.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                        (k.User != null && (
+                            (!string.IsNullOrEmpty(k.User.FullName) && k.User.FullName.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                            k.User.Username.Contains(s, StringComparison.OrdinalIgnoreCase)
+                        ))
+                    );
+                }
+
                 var response = KandangResponseDto.FromEntities(kandangs);
                 return Success(response, "Berhasil mengambil semua kandang.");
             }
@@ -30,7 +45,6 @@ namespace SIMTernakAyam.Controllers
                 return HandleException(ex);
             }
         }
-
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(Common.ApiResponse<KandangResponseDto>), 200)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]

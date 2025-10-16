@@ -1,15 +1,20 @@
 using SIMTernakAyam.Models;
+using SIMTernakAyam.DTOs.Mortalitas;
 
 namespace SIMTernakAyam.Services.Interfaces
 {
     public interface IMortalitasService : IBaseService<Mortalitas>
     {
+        // Basic entity methods
         Task<IEnumerable<Mortalitas>> GetMortalitasByAyamAsync(Guid ayamId);
-        Task<IEnumerable<Mortalitas>> GetMortalitasByKandangAsync(Guid kandangId);
         Task<IEnumerable<Mortalitas>> GetMortalitasByPeriodAsync(DateTime startDate, DateTime endDate);
         Task<IEnumerable<Mortalitas>> GetAllMortalitasWithDetailsAsync();
-        Task<Mortalitas?> GetMortalitasWithDetailsAsync(Guid id);
         Task<int> GetTotalMortalitasByKandangAsync(Guid kandangId);
         Task<int> GetTotalMortalitasByPeriodAsync(DateTime startDate, DateTime endDate);
+
+        // Enhanced DTO methods (with calculations)
+        Task<List<MortalitasResponseDto>> GetEnhancedMortalitasAsync(string? search = null, Guid? kandangId = null);
+        Task<List<MortalitasResponseDto>> GetMortalitasByKandangAsync(Guid kandangId);
+        Task<MortalitasResponseDto?> GetMortalitasWithDetailsAsync(Guid id);
     }
 }

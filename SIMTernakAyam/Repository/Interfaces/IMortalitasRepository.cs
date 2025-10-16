@@ -1,5 +1,6 @@
 using SIMTernakAyam.Models;
 using SIMTernakAyam.Repositories.Interfaces;
+
 namespace SIMTernakAyam.Repository.Interfaces
 {
     public interface IMortalitasRepository : IBaseRepository<Mortalitas>
@@ -11,5 +12,11 @@ namespace SIMTernakAyam.Repository.Interfaces
         Task<Mortalitas?> GetWithDetailsAsync(Guid id);
         Task<int> GetTotalMortalitasByKandangAsync(Guid kandangId);
         Task<int> GetTotalMortalitasByDateRangeAsync(DateTime startDate, DateTime endDate);
+        
+        // New methods for calculations
+        Task<IEnumerable<Mortalitas>> GetMortalitasWithCalculationsAsync();
+        Task<int> GetTotalAyamBeforeMortalityAsync(Guid ayamId, DateTime tanggalKematian);
+        Task<int> GetKandangCapacityAsync(Guid kandangId);
+        Task<IEnumerable<Mortalitas>> SearchMortalitasAsync(string? search = null, Guid? kandangId = null);
     }
 }

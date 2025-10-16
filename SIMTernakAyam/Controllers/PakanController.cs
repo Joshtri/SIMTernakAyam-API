@@ -107,7 +107,9 @@ namespace SIMTernakAyam.Controllers
                 var pakan = new Models.Pakan
                 {
                     NamaPakan = dto.NamaPakan,
-                    Stok = dto.Stok
+                    StokKg = dto.StokKg,
+                    Bulan = dto.Bulan,
+                    Tahun = dto.Tahun
                 };
 
                 var result = await _pakanService.CreateAsync(pakan);
@@ -149,7 +151,9 @@ namespace SIMTernakAyam.Controllers
                 {
                     Id = dto.Id,
                     NamaPakan = dto.NamaPakan,
-                    Stok = dto.Stok
+                    StokKg = dto.StokKg,
+                    Bulan = dto.Bulan,
+                    Tahun = dto.Tahun
                 };
 
                 var result = await _pakanService.UpdateAsync(pakan);

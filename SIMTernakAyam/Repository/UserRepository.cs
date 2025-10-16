@@ -42,5 +42,12 @@ namespace SIMTernakAyam.Repository
                 .Where(u => u.Role == role)
                 .ToListAsync();
         }
+
+        public async Task<User?> GetUserWithKandangsAsync(Guid userId)
+        {
+            return await _database
+                .Include(u => u.Kandangs)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+        }
     }
 }

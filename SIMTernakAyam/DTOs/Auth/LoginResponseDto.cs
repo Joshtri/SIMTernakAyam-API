@@ -1,3 +1,7 @@
+using SIMTernakAyam.DTOs.User;
+using SIMTernakAyam.Services.Interfaces;
+using System.Security.Claims;
+
 namespace SIMTernakAyam.DTOs.Auth
 {
     public class LoginResponseDto

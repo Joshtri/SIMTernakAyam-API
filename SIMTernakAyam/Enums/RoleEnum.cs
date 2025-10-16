@@ -2,8 +2,8 @@
 {
     public enum RoleEnum
     {
-        Operator, //admin.
         Petugas, //kepala kandang
+        Operator, //admin.
         Pemilik
     }
 }

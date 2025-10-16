@@ -107,7 +107,9 @@ namespace SIMTernakAyam.Controllers
                 var vaksin = new Models.Vaksin
                 {
                     NamaVaksin = dto.NamaVaksin,
-                    Stok = dto.Stok
+                    Stok = dto.Stok,
+                    Tahun = dto.Tahun,
+                    Bulan = dto.Bulan
                 };
 
                 var result = await _vaksinService.CreateAsync(vaksin);
@@ -149,7 +151,9 @@ namespace SIMTernakAyam.Controllers
                 {
                     Id = dto.Id,
                     NamaVaksin = dto.NamaVaksin,
-                    Stok = dto.Stok
+                    Stok = dto.Stok,
+                    Tahun = dto.Tahun,
+                    Bulan = dto.Bulan
                 };
 
                 var result = await _vaksinService.UpdateAsync(vaksin);

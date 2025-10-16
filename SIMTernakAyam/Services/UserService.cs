@@ -1,8 +1,11 @@
+﻿using SIMTernakAyam.DTOs.Auth;
+using SIMTernakAyam.DTOs.User;
 using SIMTernakAyam.Enums;
 using SIMTernakAyam.Models;
 using SIMTernakAyam.Repositories.Interfaces;
+using SIMTernakAyam.Repository.Interfaces;
 using SIMTernakAyam.Services.Interfaces;
-
+    
 namespace SIMTernakAyam.Services
 {
     /// <summary>
@@ -12,10 +15,31 @@ namespace SIMTernakAyam.Services
     public class UserService : BaseService<User>, IUserService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IKandangRepository _kandangRepository;
 
-        public UserService(IUserRepository userRepository) : base(userRepository)
+        public UserService(IUserRepository userRepository, IKandangRepository kandangRepository) : base(userRepository)
         {
             _userRepository = userRepository;
+            _kandangRepository = kandangRepository;
+        }
+
+        // ✅ Method baru
+        public async Task<CurrentUserDto> GetCurrentUserWithKandangsAsync(Guid userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);  
+            if (user == null) return null;
+
+            List<Kandang>? kandangs = null;
+
+            // Jika user adalah Petugas, ambil kandang yang dikelola
+            if (user.Role == RoleEnum.Petugas)
+            {
+                // ✅ Benar - Await dulu, baru filter
+                var allKandangs = await _kandangRepository.GetAllAsync();
+                kandangs = allKandangs.Where(k => k.petugasId == userId).ToList();
+            }
+
+            return CurrentUserDto.FromUser(user, kandangs);
         }
 
         #region Methods Specific to User
@@ -93,6 +117,55 @@ namespace SIMTernakAyam.Services
             catch (Exception ex)
             {
                 return (false, $"Terjadi kesalahan: {ex.Message}");
+            }
+        }
+
+        public async Task<UserProfileDto> GetUserProfileAsync(Guid userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new ArgumentException("User tidak ditemukan.");
+            }
+
+            // For PETUGAS role, include kandang information
+            if (user.Role == RoleEnum.Petugas)
+            {
+                user = await _userRepository.GetUserWithKandangsAsync(userId);
+            }
+
+            return UserProfileDto.FromEntity(user!);
+        }
+
+        public async Task<(bool Success, string Message)> UpdateProfileAsync(UpdateProfileDto dto)
+        {
+            try
+            {
+                var existingUser = await _userRepository.GetByIdAsync(dto.UserId);
+                if (existingUser == null)
+                {
+                    return (false, "User tidak ditemukan.");
+                }
+
+                // Check if username already exists (excluding current user)
+                var userWithSameUsername = await _userRepository.GetByUsernameAsync(dto.Username);
+                if (userWithSameUsername != null && userWithSameUsername.Id != dto.UserId)
+                {
+                    return (false, "Username sudah digunakan oleh user lain.");
+                }
+
+                // Update only username and fullname
+                existingUser.Username = dto.Username;
+                existingUser.FullName = dto.FullName;
+                existingUser.UpdateAt = DateTime.UtcNow;
+
+                _userRepository.UpdateAsync(existingUser);
+                await _userRepository.SaveChangesAsync();
+                return (true, "Profile berhasil diperbarui.");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Gagal memperbarui profile: {ex.Message}");
             }
         }
 

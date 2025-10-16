@@ -1,10 +1,11 @@
-namespace SIMTernakAyam.DTOs.Ayam
+﻿namespace SIMTernakAyam.DTOs.Ayam
 {
     public class AyamResponseDto
     {
         public Guid Id { get; set; }
         public Guid KandangId { get; set; }
         public string? KandangNama { get; set; }
+        public string? PetugasKandangNama { get; set; }
         public DateTime TanggalMasuk { get; set; }
         public int JumlahMasuk { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -17,6 +18,7 @@ namespace SIMTernakAyam.DTOs.Ayam
                 Id = ayam.Id,
                 KandangId = ayam.KandangId,
                 KandangNama = ayam.Kandang?.NamaKandang,
+                PetugasKandangNama = ayam.Kandang?.User?.FullName ?? ayam.Kandang?.User?.Username, // ✅ Mapping
                 TanggalMasuk = ayam.TanggalMasuk,
                 JumlahMasuk = ayam.JumlahMasuk,
                 CreatedAt = ayam.CreatedAt,

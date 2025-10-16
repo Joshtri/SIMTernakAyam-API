@@ -14,10 +14,11 @@ namespace SIMTernakAyam.Repository
         public async Task<IEnumerable<Ayam>> GetByKandangIdAsync(Guid kandangId)
         {
             return await _context.Ayams
-                .Include(a => a.Kandang)
-                .Where(a => a.KandangId == kandangId)
-                .OrderByDescending(a => a.TanggalMasuk)
-                .ToListAsync();
+                 .Include(a => a.Kandang)
+                     .ThenInclude(k => k.User) // ? Include User
+                 .Where(a => a.KandangId == kandangId)
+                 .OrderByDescending(a => a.TanggalMasuk)
+                 .ToListAsync();
         }
 
         public async Task<int> GetTotalAyamInKandangAsync(Guid kandangId)
@@ -38,6 +39,7 @@ namespace SIMTernakAyam.Repository
 
         public async Task<Ayam?> GetWithDetailsAsync(Guid id)
         {
+
             return await _context.Ayams
                 .Include(a => a.Kandang)
                 .ThenInclude(k => k.User)

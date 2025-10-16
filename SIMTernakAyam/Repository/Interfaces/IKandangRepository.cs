@@ -7,5 +7,6 @@ namespace SIMTernakAyam.Repository.Interfaces
     {
         Task<bool> IsKandangAvailableAsync(Guid kandangId, int jumlahAyamBaru);
         Task<int> GetCurrentAyamCountAsync(Guid kandangId);
+
     }
 }

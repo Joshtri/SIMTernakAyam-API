@@ -1,3 +1,5 @@
+﻿using SIMTernakAyam.DTOs.Auth;
+using SIMTernakAyam.DTOs.User;
 using SIMTernakAyam.Enums;
 using SIMTernakAyam.Models;
 
@@ -33,5 +35,18 @@ namespace SIMTernakAyam.Services.Interfaces
         /// Mengubah password user
         /// </summary>
         Task<(bool Success, string Message)> ChangePasswordAsync(Guid userId, string oldPassword, string newPassword);
+
+        /// <summary>
+        /// Mendapatkan profile user dengan informasi role-specific
+        /// </summary>
+        Task<UserProfileDto> GetUserProfileAsync(Guid userId);
+
+        /// <summary>
+        /// Update profile user (username dan fullname saja)
+        /// </summary>
+        Task<(bool Success, string Message)> UpdateProfileAsync(UpdateProfileDto dto);
+
+        // ✅ Method baru untuk get user dengan informasi kandang
+        Task<CurrentUserDto> GetCurrentUserWithKandangsAsync(Guid userId);
     }
 }

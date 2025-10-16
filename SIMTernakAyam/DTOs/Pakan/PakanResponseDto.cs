@@ -4,7 +4,9 @@ namespace SIMTernakAyam.DTOs.Pakan
     {
         public Guid Id { get; set; }
         public string NamaPakan { get; set; } = string.Empty;
-        public int Stok { get; set; }
+        public decimal StokKg { get; set; }
+        public int Bulan { get; set; }
+        public int Tahun { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
@@ -14,7 +16,9 @@ namespace SIMTernakAyam.DTOs.Pakan
             {
                 Id = pakan.Id,
                 NamaPakan = pakan.NamaPakan,
-                Stok = pakan.Stok,
+                StokKg = pakan.StokKg,
+                Bulan = pakan.Bulan,
+                Tahun = pakan.Tahun,
                 CreatedAt = pakan.CreatedAt,
                 UpdateAt = pakan.UpdateAt
             };

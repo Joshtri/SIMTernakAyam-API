@@ -6,6 +6,7 @@ namespace SIMTernakAyam.DTOs.Panen
         public Guid AyamId { get; set; }
         public string? NamaKandang { get; set; }
         public DateTime TanggalPanen { get; set; }
+        public Guid? KandangId{ get; set; }
         public int JumlahEkorPanen { get; set; }
         public decimal BeratRataRata { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -18,6 +19,7 @@ namespace SIMTernakAyam.DTOs.Panen
                 Id = panen.Id,
                 AyamId = panen.AyamId,
                 NamaKandang = panen.Ayam?.Kandang?.NamaKandang,
+                KandangId = panen.Ayam?.Kandang.Id,
                 TanggalPanen = panen.TanggalPanen,
                 JumlahEkorPanen = panen.JumlahEkorPanen,
                 BeratRataRata = panen.BeratRataRata,

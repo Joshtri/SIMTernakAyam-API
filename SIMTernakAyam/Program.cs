@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using SIMTernakAyam.Data;
 using SIMTernakAyam.Infrastructure;
 using SIMTernakAyam.Repositories.Interfaces;
@@ -34,6 +35,10 @@ builder.Services.AddCors(options =>
 
 // Database Configuration
 var connectionDb = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Configure Npgsql to handle DateTime properly
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionDb));
 
@@ -65,6 +70,9 @@ builder.Services.AddAuthorization();
 
 // Register JWT Service
 builder.Services.AddScoped<IJwtService, JwtService>();
+
+// Register Dashboard Service
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 // Repository Registration - Dependency Injection
 builder.Services.AddScoped<IUserRepository, UserRepository>();

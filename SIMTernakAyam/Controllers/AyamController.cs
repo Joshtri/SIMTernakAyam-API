@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Ayam;
 using SIMTernakAyam.Services.Interfaces;
@@ -17,13 +20,34 @@ namespace SIMTernakAyam.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<AyamResponseDto>>), 200)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] Guid? kandangId = null, [FromQuery] string? search = null)
         {
             try
             {
-                var ayams = await _ayamService.GetAllAyamWithDetailsAsync();
+                IEnumerable<Models.Ayam> ayams;
+
+                if (kandangId.HasValue && kandangId.Value != Guid.Empty)
+                {
+                    ayams = await _ayamService.GetAyamByKandangAsync(kandangId.Value);
+                }
+                else
+                {
+                    ayams = await _ayamService.GetAllAyamWithDetailsAsync();
+                }
+
+                // Apply free-text search (optional)
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var s = search.Trim();
+                    ayams = ayams.Where(a =>
+                        (a.Kandang != null && !string.IsNullOrEmpty(a.Kandang.NamaKandang) && a.Kandang.NamaKandang.Contains(s, StringComparison.OrdinalIgnoreCase))
+                        || a.JumlahMasuk.ToString().Contains(s)
+                        || a.TanggalMasuk.ToString("yyyy-MM-dd").Contains(s)
+                    );
+                }
+
                 var response = AyamResponseDto.FromEntities(ayams);
-                return Success(response, "Berhasil mengambil semua data ayam.");
+                return Success(response, "Berhasil mengambil data ayam.");
             }
             catch (Exception ex)
             {
@@ -38,7 +62,7 @@ namespace SIMTernakAyam.Controllers
         {
             try
             {
-                var ayam = await _ayamService.GetByIdAsync(id);
+                var ayam = await _ayamService.GetAyamWithDetailsAsync(id);
                 if (ayam == null)
                 {
                     return NotFound("Data ayam tidak ditemukan.");

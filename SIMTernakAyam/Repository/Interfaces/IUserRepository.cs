@@ -28,5 +28,10 @@ namespace SIMTernakAyam.Repositories.Interfaces
         /// Mendapatkan semua user berdasarkan role
         /// </summary>
         Task<IEnumerable<User>> GetUsersByRoleAsync(Enums.RoleEnum role);
+
+        /// <summary>
+        /// Mendapatkan user beserta kandang-kandangnya
+        /// </summary>
+        Task<User?> GetUserWithKandangsAsync(Guid userId);
     }
 }

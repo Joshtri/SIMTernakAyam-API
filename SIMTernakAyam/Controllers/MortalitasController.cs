@@ -17,13 +17,12 @@ namespace SIMTernakAyam.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<MortalitasResponseDto>>), 200)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] string? search = null, [FromQuery] Guid? kandangId = null)
         {
             try
             {
-                var mortalitas = await _mortalitasService.GetAllAsync();
-                var response = MortalitasResponseDto.FromEntities(mortalitas);
-                return Success(response, "Berhasil mengambil semua data mortalitas.");
+                var response = await _mortalitasService.GetEnhancedMortalitasAsync(search, kandangId);
+                return Success(response, "Berhasil mengambil data mortalitas dengan detail lengkap.");
             }
             catch (Exception ex)
             {
@@ -38,14 +37,28 @@ namespace SIMTernakAyam.Controllers
         {
             try
             {
-                var mortalitas = await _mortalitasService.GetByIdAsync(id);
-                if (mortalitas == null)
+                var response = await _mortalitasService.GetMortalitasWithDetailsAsync(id);
+                if (response == null)
                 {
                     return NotFound("Data mortalitas tidak ditemukan.");
                 }
 
-                var response = MortalitasResponseDto.FromEntity(mortalitas);
-                return Success(response, "Berhasil mengambil data mortalitas.");
+                return Success(response, "Berhasil mengambil detail data mortalitas.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("kandang/{kandangId}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<MortalitasResponseDto>>), 200)]
+        public async Task<IActionResult> GetByKandang(Guid kandangId)
+        {
+            try
+            {
+                var response = await _mortalitasService.GetMortalitasByKandangAsync(kandangId);
+                return Success(response, $"Berhasil mengambil data mortalitas untuk kandang {kandangId}.");
             }
             catch (Exception ex)
             {
@@ -81,8 +94,9 @@ namespace SIMTernakAyam.Controllers
                     return Error(result.Message, 400);
                 }
 
-                var response = MortalitasResponseDto.FromEntity(result.Data!);
-                return Created(response, result.Message);
+                // Get enhanced response with calculations
+                var enhancedResponse = await _mortalitasService.GetMortalitasWithDetailsAsync(result.Data!.Id);
+                return Created(enhancedResponse, result.Message);
             }
             catch (Exception ex)
             {

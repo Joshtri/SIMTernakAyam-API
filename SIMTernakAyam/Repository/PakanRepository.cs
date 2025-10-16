@@ -20,8 +20,8 @@ namespace SIMTernakAyam.Repository
         public async Task<IEnumerable<Pakan>> GetLowStockAsync(int threshold = 10)
         {
             return await _context.Pakans
-                .Where(p => p.Stok <= threshold)
-                .OrderBy(p => p.Stok)
+                .Where(p => p.StokKg <= threshold)
+                .OrderBy(p => p.StokKg)
                 .ToListAsync();
         }
 
@@ -43,9 +43,9 @@ namespace SIMTernakAyam.Repository
             var pakan = await _context.Pakans.FindAsync(id);
             if (pakan == null) return false;
 
-            pakan.Stok = newStok;
+            pakan.StokKg = newStok;
             pakan.UpdateAt = DateTime.UtcNow;
-            
+
             await _context.SaveChangesAsync();
             return true;
         }

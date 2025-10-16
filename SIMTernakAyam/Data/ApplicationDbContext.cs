@@ -23,6 +23,7 @@ namespace SIMTernakAyam.Data
         public DbSet<JenisKegiatan> JenisKegiatans { get; set; }
         public DbSet<Pakan> Pakans { get; set; }
         public DbSet<Vaksin> Vaksins { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -138,6 +139,33 @@ namespace SIMTernakAyam.Data
             modelBuilder.Entity<JenisKegiatan>()
                 .Property(j => j.BiayaDefault)
                 .HasPrecision(18, 2);
+
+            // Konfigurasi decimal precision untuk StokKg pada Pakan
+            modelBuilder.Entity<Pakan>()
+                .Property(p => p.StokKg)
+                .HasPrecision(18, 2);
+
+            // Relasi User -> Notification (One-to-Many)
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Notification>()
+                .Property(n => n.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<Notification>()
+                .Property(n => n.Message)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            modelBuilder.Entity<Notification>()
+                .Property(n => n.Type)
+                .IsRequired()
+                .HasMaxLength(50);
         }
 
 

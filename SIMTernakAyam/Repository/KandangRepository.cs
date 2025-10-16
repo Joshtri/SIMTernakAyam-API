@@ -11,6 +11,32 @@ namespace SIMTernakAyam.Repository
         {
         }
 
+        // ✅ Method untuk get kandang by petugas
+        public async Task<List<Kandang>> GetKandangsByPetugasAsync(Guid petugasId)
+        {
+            return await _database
+                .Where(k => k.petugasId == petugasId)
+                .OrderBy(k => k.NamaKandang)
+                .ToListAsync();
+        }
+
+        public override async Task<IEnumerable<Kandang>> GetAllAsync()
+        {
+            return await _database
+                .Include(k => k.User)
+                .OrderBy(k => k.NamaKandang)
+                .ToListAsync();
+        }
+
+        // Override GetByIdAsync to include User
+        public override async Task<Kandang?> GetByIdAsync(Guid id)
+        {
+            return await _database
+                .Include(k => k.User)
+                .FirstOrDefaultAsync(k => k.Id == id);
+        }
+
+
         public async Task<bool> IsKandangAvailableAsync(Guid kandangId, int jumlahAyamBaru)
         {
             var kandang = await _database.FindAsync(kandangId);

@@ -42,6 +42,8 @@ namespace SIMTernakAyam.Services
         /// Membuat data baru dengan validasi
         /// Virtual untuk memungkinkan override dan custom validation di child class
         /// </summary>
+        /// 
+
         public virtual async Task<(bool Success, string Message, T? Data)> CreateAsync(T entity)
         {
             try
@@ -55,13 +57,12 @@ namespace SIMTernakAyam.Services
 
                 // Set default values - Use UTC for PostgreSQL compatibility
                 entity.Id = Guid.NewGuid();
-                entity.CreatedAt = DateTime.UtcNow;
-                entity.UpdateAt = DateTime.UtcNow;
-
+                entity.CreatedAt = DateTime.SpecifyKind(entity.CreatedAt, DateTimeKind.Utc);
+                entity.UpdateAt = DateTime.SpecifyKind(entity.UpdateAt, DateTimeKind.Utc);
                 // Hook untuk custom logic sebelum create
                 await BeforeCreateAsync(entity);
 
-                await _repository.AddAsync(entity);
+                await _repository.AddAsync(entity); 
                 await _repository.SaveChangesAsync();
 
                 // Hook untuk custom logic setelah create

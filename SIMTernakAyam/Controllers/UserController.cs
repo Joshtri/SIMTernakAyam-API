@@ -329,5 +329,119 @@ namespace SIMTernakAyam.Controllers
                 return HandleException(ex);
             }
         }
+
+        /// <summary>
+        /// Mendapatkan profile user yang sedang login
+        /// Menampilkan informasi spesifik berdasarkan role
+        /// </summary>
+        /// <param name="userId">User ID dari token/session</param>
+        /// <returns>Profile user dengan informasi role-specific</returns>
+        [HttpGet("profile/{userId}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<UserProfileDto>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetUserProfile(Guid userId)
+        {
+            try
+            {
+                var profile = await _userService.GetUserProfileAsync(userId);
+                return Success(profile, "Berhasil mengambil profile user.");
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Update profile user (username, fullname)
+        /// </summary>
+        /// <param name="userId">User ID</param>
+        /// <param name="dto">Data profile yang akan diupdate</param>
+        /// <returns>Updated profile</returns>
+        [HttpPut("profile/{userId}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<UserProfileDto>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 422)]
+        public async Task<IActionResult> UpdateUserProfile(Guid userId, [FromBody] UpdateProfileDto dto)
+        {
+            try
+            {
+                // Validasi ModelState
+                if (!ModelState.IsValid)
+                {
+                    return ValidationError(ModelState);
+                }
+
+                // Validasi ID dari route harus sama dengan ID di body
+                if (userId != dto.UserId)
+                {
+                    return Error("ID di URL tidak sesuai dengan ID di body.", 400);
+                }
+
+                var result = await _userService.UpdateProfileAsync(dto);
+
+                if (!result.Success)
+                {
+                    if (result.Message.Contains("tidak ditemukan"))
+                    {
+                        return NotFound(result.Message);
+                    }
+                    return Error(result.Message, 400);
+                }
+
+                // Ambil profile terbaru setelah update
+                var updatedProfile = await _userService.GetUserProfileAsync(userId);
+                return Success(updatedProfile, result.Message);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Update password dari profile
+        /// </summary>
+        /// <param name="userId">User ID</param>
+        /// <param name="dto">Data password lama dan baru</param>
+        /// <returns>Success message</returns>
+        [HttpPut("profile/{userId}/password")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 422)]
+        public async Task<IActionResult> UpdateProfilePassword(Guid userId, [FromBody] ChangePasswordDto dto)
+        {
+            try
+            {
+                // Validasi ModelState
+                if (!ModelState.IsValid)
+                {
+                    return ValidationError(ModelState);
+                }
+
+                var result = await _userService.ChangePasswordAsync(userId, dto.OldPassword, dto.NewPassword);
+
+                if (!result.Success)
+                {
+                    if (result.Message.Contains("tidak ditemukan"))
+                    {
+                        return NotFound(result.Message);
+                    }
+                    return Error(result.Message, 400);
+                }
+
+                return Success("Password berhasil diubah.", 200);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
     }
 }

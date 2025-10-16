@@ -1,5 +1,6 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SIMTernakAyam.Common;
 using SIMTernakAyam.DTOs.Auth;
 using SIMTernakAyam.DTOs.User;
 using SIMTernakAyam.Services;
@@ -99,27 +100,26 @@ namespace SIMTernakAyam.Controllers
         /// <returns>Current user data</returns>
         [HttpGet("me")]
         [Authorize]
-        [ProducesResponseType(typeof(Common.ApiResponse<CurrentUserDto>), 200)]
-        [ProducesResponseType(typeof(Common.ApiResponse<object>), 401)]
-        public async Task<IActionResult> GetCurrentUser()
+        [ProducesResponseType(typeof(ApiResponse<CurrentUserDto>), 200)]
+        public async Task<IActionResult> GetMe()
         {
             try
             {
-                // Get user ID from JWT token claims
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+                // Get user ID from JWT token
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
                 {
-                    return Unauthorized("Token tidak valid.");
+                    return Unauthorized("Invalid token");
                 }
 
-                var user = await _userService.GetByIdAsync(userId);
-                if (user == null)
+                // ✅ Gunakan method baru yang include kandang info
+                var currentUser = await _userService.GetCurrentUserWithKandangsAsync(userId);
+                if (currentUser == null)
                 {
-                    return NotFound("User tidak ditemukan.");
+                    return NotFound("User tidak ditemukan");
                 }
 
-                var response = CurrentUserDto.FromUser(user);
-                return Success(response, "Berhasil mengambil informasi user.");
+                return Success(currentUser, "Berhasil mengambil informasi user");
             }
             catch (Exception ex)
             {

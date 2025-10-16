@@ -64,7 +64,7 @@ namespace SIMTernakAyam.Services
                 return new ValidationResult { IsValid = false, ErrorMessage = $"Pakan dengan nama '{entity.NamaPakan}' sudah ada." };
             }
 
-            if (entity.Stok < 0)
+            if (entity.StokKg < 0)
             {
                 return new ValidationResult { IsValid = false, ErrorMessage = "Stok tidak boleh negatif." };
             }
@@ -86,7 +86,7 @@ namespace SIMTernakAyam.Services
                 return new ValidationResult { IsValid = false, ErrorMessage = $"Pakan dengan nama '{entity.NamaPakan}' sudah ada." };
             }
 
-            if (entity.Stok < 0)
+            if (entity.StokKg < 0)
             {
                 return new ValidationResult { IsValid = false, ErrorMessage = "Stok tidak boleh negatif." };
             }
