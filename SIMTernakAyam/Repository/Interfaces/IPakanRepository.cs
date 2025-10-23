@@ -9,5 +9,8 @@ using SIMTernakAyam.Repositories.Interfaces;
         Task<IEnumerable<Pakan>> GetLowStockAsync(int threshold = 10);
         Task<bool> IsNameExistsAsync(string namaPakan, Guid? excludeId = null);
         Task<bool> UpdateStokAsync(Guid id, int newStok);
+        Task<bool> UpdateStokKgAsync(Guid id, decimal newStok);
+        Task<(bool Success, string Message)> UpdateStokKgAsyncDirect(Guid id, decimal amountChange, DateTime tanggal);
+        Task<(decimal StokKg, int Bulan, int Tahun)?> GetStockInfoAsync(Guid id);
     }
 }

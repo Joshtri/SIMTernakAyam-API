@@ -73,7 +73,11 @@ namespace SIMTernakAyam.Controllers
                     Jumlah = dto.Jumlah,
                     PetugasId = dto.PetugasId,
                     OperasionalId = dto.OperasionalId,
-                    BuktiUrl = dto.BuktiUrl
+                    KandangId = dto.KandangId,
+                    BuktiUrl = dto.BuktiUrl,
+                    Catatan = dto.Catatan,
+                    Bulan = dto.Bulan,
+                    Tahun = dto.Tahun
                 };
 
                 var result = await _biayaService.CreateAsync(biaya);
@@ -160,6 +164,26 @@ namespace SIMTernakAyam.Controllers
                 }
 
                 return Success(result.Message, 200);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("rekap-bulanan/{bulan}/{tahun}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<RekapBiayaBulananDto>), 200)]
+        public async Task<IActionResult> GetRekapBulanan(int bulan, int tahun)
+        {
+            try
+            {
+                if (bulan < 1 || bulan > 12)
+                {
+                    return Error("Bulan harus antara 1-12.", 400);
+                }
+
+                var rekap = await _biayaService.GetRekapBiayaBulananAsync(bulan, tahun);
+                return Success(rekap, $"Berhasil mengambil rekap biaya bulanan untuk {bulan}/{tahun}.");
             }
             catch (Exception ex)
             {

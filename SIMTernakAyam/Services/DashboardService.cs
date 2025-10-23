@@ -107,23 +107,37 @@ namespace SIMTernakAyam.Services
         {
             var kandangs = await _context.Kandangs
                 .Include(k => k.User)
-                .Include(k => k.Ayams)
                 .ToListAsync();
 
             var performances = new List<KandangPerformanceDto>();
 
             foreach (var kandang in kandangs)
             {
-                var currentAyams = kandang.Ayams?.Sum(a => a.JumlahMasuk) ?? 0;
+                // Calculate initial count from Ayams - query directly to ensure we get the data
+                var initialAyamCount = await _context.Ayams
+                    .Where(a => a.KandangId == kandang.Id)
+                    .SumAsync(a => a.JumlahMasuk);
+
+                // Get total mortality for this kandang (all time)
+                var totalMortality = await _context.Mortalitas
+                    .Where(m => m.Ayam.KandangId == kandang.Id)
+                    .SumAsync(m => m.JumlahKematian);
+
+                // Current ayams = initial count - total mortality
+                var currentAyams = Math.Max(0, initialAyamCount - totalMortality);
+
                 var utilizationPercentage = kandang.Kapasitas > 0 ? (double)currentAyams / kandang.Kapasitas * 100 : 0;
 
+                // Get mortality for this month only
                 var mortalityThisMonth = await _context.Mortalitas
-                    .Where(m => m.Ayam.KandangId == kandang.Id && 
+                    .Where(m => m.Ayam.KandangId == kandang.Id &&
                                m.TanggalKematian.Month == DateTime.UtcNow.Month &&
                                m.TanggalKematian.Year == DateTime.UtcNow.Year)
                     .SumAsync(m => m.JumlahKematian);
 
-                var mortalityRate = currentAyams > 0 ? (double)mortalityThisMonth / currentAyams * 100 : 0;
+                // Calculate mortality rate based on initial count (before deaths)
+                var basePopulation = initialAyamCount > 0 ? initialAyamCount : currentAyams;
+                var mortalityRate = basePopulation > 0 ? (double)mortalityThisMonth / basePopulation * 100 : 0;
 
                 var status = GetKandangStatus(utilizationPercentage, mortalityRate);
 
@@ -275,35 +289,56 @@ namespace SIMTernakAyam.Services
 
             foreach (var kandang in kandangs)
             {
-                var currentAyams = kandang.Ayams?.Sum(a => a.JumlahMasuk) ?? 0;
+                // Calculate initial count
+                var initialCount = await _context.Ayams
+                    .Where(a => a.KandangId == kandang.Id)
+                    .SumAsync(a => a.JumlahMasuk);
+
+                // Get total mortality untuk kandang ini
+                var totalMortality = await _context.Mortalitas
+                    .Include(m => m.Ayam)
+                    .Where(m => m.Ayam.KandangId == kandang.Id)
+                    .SumAsync(m => m.JumlahKematian);
+
+                // Current ayams = initial - mortality
+                var currentAyams = Math.Max(0, initialCount - totalMortality);
 
                 var mortalityToday = await _context.Mortalitas
-                    .Where(m => m.Ayam.KandangId == kandang.Id && m.TanggalKematian.Date == today.Date)
+                    .Include(m => m.Ayam)
+                    .Where(m => m.Ayam.KandangId == kandang.Id &&
+                               m.TanggalKematian.Year == today.Year &&
+                               m.TanggalKematian.Month == today.Month &&
+                               m.TanggalKematian.Day == today.Day)
                     .SumAsync(m => m.JumlahKematian);
 
                 var mortalityThisWeek = await _context.Mortalitas
+                    .Include(m => m.Ayam)
                     .Where(m => m.Ayam.KandangId == kandang.Id &&
-                               m.TanggalKematian >= weekAgo)
+                               m.TanggalKematian >= weekAgo && m.TanggalKematian <= today)
                     .SumAsync(m => m.JumlahKematian);
 
-                // Get last feeding and vaccination times
-                var lastFeedTime = await _context.Operasionals
-                    .Where(o => o.KandangId == kandang.Id && o.PakanId != null)
-                    .OrderByDescending(o => o.Tanggal)
-                    .Select(o => o.Tanggal)
+                // Get last feed and vaccination from Jurnal Harian
+                var lastFeedJurnal = await _context.JurnalHarians
+                    .Where(j => j.KandangId == kandang.Id &&
+                               (j.JudulKegiatan.ToLower().Contains("pakan") ||
+                                j.DeskripsiKegiatan.ToLower().Contains("pakan") ||
+                                j.JudulKegiatan.ToLower().Contains("feed")))
+                    .OrderByDescending(j => j.Tanggal)
+                    .ThenByDescending(j => j.WaktuSelesai)
                     .FirstOrDefaultAsync();
 
-                if (lastFeedTime != default)
-                    lastFeedTime = DateTime.SpecifyKind(lastFeedTime, DateTimeKind.Utc);
+                var lastFeedTime = lastFeedJurnal != null ? DateTime.SpecifyKind(lastFeedJurnal.Tanggal, DateTimeKind.Utc) : default;
 
-                var lastVaccinationTime = await _context.Operasionals
-                    .Where(o => o.KandangId == kandang.Id && o.VaksinId != null)
-                    .OrderByDescending(o => o.Tanggal)
-                    .Select(o => o.Tanggal)
+                var lastVaccinationJurnal = await _context.JurnalHarians
+                    .Where(j => j.KandangId == kandang.Id &&
+                               (j.JudulKegiatan.ToLower().Contains("vaksin") ||
+                                j.DeskripsiKegiatan.ToLower().Contains("vaksin") ||
+                                j.JudulKegiatan.ToLower().Contains("vaccin")))
+                    .OrderByDescending(j => j.Tanggal)
+                    .ThenByDescending(j => j.WaktuSelesai)
                     .FirstOrDefaultAsync();
 
-                if (lastVaccinationTime != default)
-                    lastVaccinationTime = DateTime.SpecifyKind(lastVaccinationTime, DateTimeKind.Utc);
+                var lastVaccinationTime = lastVaccinationJurnal != null ? DateTime.SpecifyKind(lastVaccinationJurnal.Tanggal, DateTimeKind.Utc) : default;
 
                 var healthStatus = GetHealthStatus(mortalityToday, mortalityThisWeek, currentAyams);
 
@@ -332,37 +367,37 @@ namespace SIMTernakAyam.Services
                 .Select(k => k.Id)
                 .ToListAsync();
 
-            // Get feeding operations for today
-            var feedingOperations = await _context.Operasionals
-                .Include(o => o.JenisKegiatan)
-                .Where(o => userKandangs.Contains(o.KandangId) &&
-                           o.Tanggal.Date == today.Date &&
-                           o.PakanId != null)
+            // Get jurnal harian for today
+            var todayJurnals = await _context.JurnalHarians
+                .Where(j => j.PetugasId == petugasId &&
+                           j.Tanggal.Year == today.Year &&
+                           j.Tanggal.Month == today.Month &&
+                           j.Tanggal.Day == today.Day)
                 .ToListAsync();
 
-            // Get vaccination operations for today
-            var vaccinationOperations = await _context.Operasionals
-                .Include(o => o.JenisKegiatan)
-                .Where(o => userKandangs.Contains(o.KandangId) &&
-                           o.Tanggal.Date == today.Date &&
-                           o.VaksinId != null)
-                .ToListAsync();
+            // Categorize based on judul/deskripsi
+            var feedingJurnals = todayJurnals.Count(j =>
+                j.JudulKegiatan.ToLower().Contains("pakan") ||
+                j.DeskripsiKegiatan.ToLower().Contains("pakan") ||
+                j.JudulKegiatan.ToLower().Contains("feeding"));
 
-            // Get cleaning operations for today
-            var cleaningOperations = await _context.Operasionals
-                .Include(o => o.JenisKegiatan)
-                .Where(o => userKandangs.Contains(o.KandangId) &&
-                           o.Tanggal.Date == today.Date &&
-                           o.JenisKegiatan.NamaKegiatan.ToLower().Contains("pembersihan"))
-                .ToListAsync();
+            var vaccinationJurnals = todayJurnals.Count(j =>
+                j.JudulKegiatan.ToLower().Contains("vaksin") ||
+                j.DeskripsiKegiatan.ToLower().Contains("vaksin") ||
+                j.JudulKegiatan.ToLower().Contains("vaccination"));
 
-            // Calculate pending tasks (estimated based on kandang count and schedule)
+            var cleaningJurnals = todayJurnals.Count(j =>
+                j.JudulKegiatan.ToLower().Contains("bersih") ||
+                j.DeskripsiKegiatan.ToLower().Contains("bersih") ||
+                j.JudulKegiatan.ToLower().Contains("cleaning"));
+
+            // Calculate pending tasks
             var kandangCount = userKandangs.Count;
-            var pendingFeedings = Math.Max(0, kandangCount * 3 - feedingOperations.Count); // 3 feeding per day per kandang
-            var pendingVaccinations = Math.Max(0, kandangCount / 7 - vaccinationOperations.Count); // Weekly vaccination
-            var pendingCleanings = Math.Max(0, kandangCount - cleaningOperations.Count); // Daily cleaning
+            var pendingFeedings = Math.Max(0, kandangCount * 3 - feedingJurnals);
+            var pendingVaccinations = Math.Max(0, kandangCount / 7 - vaccinationJurnals);
+            var pendingCleanings = Math.Max(0, kandangCount - cleaningJurnals);
 
-            var completedTasks = feedingOperations.Count + vaccinationOperations.Count + cleaningOperations.Count;
+            var completedTasks = todayJurnals.Count;
             var totalTasks = completedTasks + pendingFeedings + pendingVaccinations + pendingCleanings;
             var completionRate = totalTasks > 0 ? (double)completedTasks / totalTasks * 100 : 0;
 
@@ -424,29 +459,32 @@ namespace SIMTernakAyam.Services
 
             var kandangsManaged = userKandangs.Count;
 
-            // Count tasks completed this week
-            var tasksThisWeek = await _context.Operasionals
-                .Where(o => userKandangs.Select(k => k.Id).Contains(o.KandangId) &&
-                           o.Tanggal >= currentWeekStart)
+            // Count jurnal harian completed this week (as tasks)
+            var tasksThisWeek = await _context.JurnalHarians
+                .Where(j => j.PetugasId == petugasId && j.Tanggal >= currentWeekStart)
                 .CountAsync();
 
-            // Count tasks completed this month
-            var tasksThisMonth = await _context.Operasionals
-                .Where(o => userKandangs.Select(k => k.Id).Contains(o.KandangId) &&
-                           o.Tanggal >= currentMonthStart)
+            // Count jurnal harian completed this month
+            var tasksThisMonth = await _context.JurnalHarians
+                .Where(j => j.PetugasId == petugasId && j.Tanggal >= currentMonthStart)
                 .CountAsync();
 
             // Calculate average mortality rate for user's kandangs
-            var totalAyams = userKandangs.Sum(k => k.Ayams?.Sum(a => a.JumlahMasuk) ?? 0);
+            var kandangIds = userKandangs.Select(k => k.Id).ToList();
+
+            var totalAyams = await _context.Ayams
+                .Where(a => kandangIds.Contains(a.KandangId))
+                .SumAsync(a => a.JumlahMasuk);
+
             var totalMortality = await _context.Mortalitas
-                .Where(m => userKandangs.Select(k => k.Id).Contains(m.Ayam.KandangId) &&
+                .Where(m => kandangIds.Contains(m.Ayam.KandangId) &&
                            m.TanggalKematian >= currentMonthStart)
                 .SumAsync(m => m.JumlahKematian);
 
             var avgMortalityRate = totalAyams > 0 ? (double)totalMortality / totalAyams * 100 : 0;
 
-            // Calculate efficiency score based on task completion and mortality rate
-            var expectedTasksPerWeek = kandangsManaged * 21; // 3 feedings * 7 days per kandang
+            // Calculate efficiency score based on jurnal harian completion
+            var expectedTasksPerWeek = kandangsManaged * 7; // At least 1 jurnal per day per kandang
             var taskEfficiency = expectedTasksPerWeek > 0 ? Math.Min(100, (double)tasksThisWeek / (double)expectedTasksPerWeek * 100) : 0;
             var mortalityScore = Math.Max(0, 100 - (avgMortalityRate * 10)); // Lower mortality = higher score
             var efficiencyScore = (taskEfficiency + mortalityScore) / 2;
@@ -483,42 +521,60 @@ namespace SIMTernakAyam.Services
 
             var activities = new List<ScheduledActivityDto>();
 
-            // Generate scheduled activities based on kandang requirements
+            // Generate scheduled activities based on jurnal harian
             foreach (var kandang in userKandangs)
             {
-                // Check if feeding was done today
-                var lastFeeding = await _context.Operasionals
-                    .Where(o => o.KandangId == kandang.Id && o.PakanId != null)
-                    .OrderByDescending(o => o.Tanggal)
+                // Check if feeding jurnal was done today
+                var lastFeedingJurnal = await _context.JurnalHarians
+                    .Where(j => j.KandangId == kandang.Id &&
+                               (j.JudulKegiatan.ToLower().Contains("pakan") ||
+                                j.DeskripsiKegiatan.ToLower().Contains("pakan") ||
+                                j.JudulKegiatan.ToLower().Contains("feed")))
+                    .OrderByDescending(j => j.Tanggal)
+                    .ThenByDescending(j => j.WaktuSelesai)
                     .FirstOrDefaultAsync();
 
-                if (lastFeeding == null || lastFeeding.Tanggal.Date < today.Date)
+                // Check if feeding was done today by comparing date parts
+                var feedingDoneToday = lastFeedingJurnal != null &&
+                                      lastFeedingJurnal.Tanggal.Year == today.Year &&
+                                      lastFeedingJurnal.Tanggal.Month == today.Month &&
+                                      lastFeedingJurnal.Tanggal.Day == today.Day;
+
+                if (!feedingDoneToday)
                 {
                     activities.Add(new ScheduledActivityDto
                     {
                         ActivityType = "Feeding",
                         KandangName = kandang.NamaKandang,
-                        ScheduledTime = DateTime.SpecifyKind(today.AddHours(8), DateTimeKind.Utc), // Morning feeding
+                        ScheduledTime = DateTime.SpecifyKind(today.AddHours(8), DateTimeKind.Utc),
                         Priority = "High",
                         IsOverdue = now.Hour > 8
                     });
                 }
 
-                // Check if cleaning was done today
-                var lastCleaning = await _context.Operasionals
-                    .Include(o => o.JenisKegiatan)
-                    .Where(o => o.KandangId == kandang.Id &&
-                               o.JenisKegiatan.NamaKegiatan.ToLower().Contains("pembersihan"))
-                    .OrderByDescending(o => o.Tanggal)
+                // Check if cleaning jurnal was done today
+                var lastCleaningJurnal = await _context.JurnalHarians
+                    .Where(j => j.KandangId == kandang.Id &&
+                               (j.JudulKegiatan.ToLower().Contains("bersih") ||
+                                j.DeskripsiKegiatan.ToLower().Contains("bersih") ||
+                                j.JudulKegiatan.ToLower().Contains("clean")))
+                    .OrderByDescending(j => j.Tanggal)
+                    .ThenByDescending(j => j.WaktuSelesai)
                     .FirstOrDefaultAsync();
 
-                if (lastCleaning == null || lastCleaning.Tanggal.Date < today.Date)
+                // Check if cleaning was done today
+                var cleaningDoneToday = lastCleaningJurnal != null &&
+                                       lastCleaningJurnal.Tanggal.Year == today.Year &&
+                                       lastCleaningJurnal.Tanggal.Month == today.Month &&
+                                       lastCleaningJurnal.Tanggal.Day == today.Day;
+
+                if (!cleaningDoneToday)
                 {
                     activities.Add(new ScheduledActivityDto
                     {
                         ActivityType = "Cleaning",
                         KandangName = kandang.NamaKandang,
-                        ScheduledTime = DateTime.SpecifyKind(today.AddHours(14), DateTimeKind.Utc), // Afternoon cleaning
+                        ScheduledTime = DateTime.SpecifyKind(today.AddHours(14), DateTimeKind.Utc),
                         Priority = "Medium",
                         IsOverdue = now.Hour > 14
                     });
@@ -528,8 +584,8 @@ namespace SIMTernakAyam.Services
             return new UpcomingActivitiesDto
             {
                 TodayActivities = activities.Where(a => a.ScheduledTime.Date == today.Date).ToList(),
-                TomorrowActivities = activities.Where(a => a.ScheduledTime.Date == tomorrow.Date).ToList(),
-                ThisWeekActivities = activities.Where(a => a.ScheduledTime.Date > tomorrow.Date && a.ScheduledTime.Date <= thisWeekEnd.Date).ToList()
+                TomorrowActivities = new List<ScheduledActivityDto>(), // Untuk besok bisa generate juga kalau mau
+                ThisWeekActivities = new List<ScheduledActivityDto>()
             };
         }
 

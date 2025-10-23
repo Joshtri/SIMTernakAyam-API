@@ -21,7 +21,7 @@ namespace SIMTernakAyam.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<AyamResponseDto>>), 200)]
         public async Task<IActionResult> GetAll([FromQuery] Guid? kandangId = null, [FromQuery] string? search = null)
-        {
+        {   
             try
             {
                 IEnumerable<Models.Ayam> ayams;

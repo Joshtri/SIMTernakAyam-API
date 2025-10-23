@@ -41,6 +41,11 @@ namespace SIMTernakAyam.Repository
             return await _database.FirstOrDefaultAsync(s => s.Id == id);
         }
 
+        public virtual async Task<T?> GetByIdNoTrackingAsync(Guid id)
+        {
+            return await _database.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        }
+
         public virtual async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();

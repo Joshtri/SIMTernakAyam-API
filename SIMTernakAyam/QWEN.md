@@ -1,1 +1,1 @@
-﻿jadi sekarang saya ingin anda perbarui pada schema pakan dan vaksin, jdi pakan dan vaksin ini memang semacam pendataan stok yaa kan, tapi di bagian ini saya ingin anda buat  jdi stok itu utk bulan apa gitu, jdi ada field itu itu, bulan apa dan athun apa, lalu utk pakan itu buat stocknya itu dalam satuan brp kg gitulah brooo. klo bisa gitu, jdi tolon gupdate yaaa. 
+﻿

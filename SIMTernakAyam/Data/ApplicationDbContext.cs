@@ -24,6 +24,8 @@ namespace SIMTernakAyam.Data
         public DbSet<Pakan> Pakans { get; set; }
         public DbSet<Vaksin> Vaksins { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<KandangAsisten> KandangAsistens { get; set; }
+        public DbSet<JurnalHarian> JurnalHarians { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -63,6 +65,14 @@ namespace SIMTernakAyam.Data
                 .WithMany()
                 .HasForeignKey(b => b.PetugasId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Relasi Kandang -> Biaya (One-to-Many, optional)
+            modelBuilder.Entity<Biaya>()
+                .HasOne(b => b.Kandang)
+                .WithMany()
+                .HasForeignKey(b => b.KandangId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
 
             // Relasi Operasional -> Biaya (One-to-Many, optional)
             modelBuilder.Entity<Biaya>()
@@ -166,6 +176,58 @@ namespace SIMTernakAyam.Data
                 .Property(n => n.Type)
                 .IsRequired()
                 .HasMaxLength(50);
+
+            // Relasi KandangAsisten (Many-to-Many Junction)
+            modelBuilder.Entity<KandangAsisten>()
+                .HasOne(ka => ka.Kandang)
+                .WithMany(k => k.KandangAsistens)
+                .HasForeignKey(ka => ka.KandangId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<KandangAsisten>()
+                .HasOne(ka => ka.Asisten)
+                .WithMany()
+                .HasForeignKey(ka => ka.AsistenId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Unique constraint: satu asisten tidak boleh didaftarkan 2x pada kandang yang sama
+            modelBuilder.Entity<KandangAsisten>()
+                .HasIndex(ka => new { ka.KandangId, ka.AsistenId })
+                .IsUnique();
+
+            // Relasi JurnalHarian -> User (Petugas) (Many-to-One)
+            modelBuilder.Entity<JurnalHarian>()
+                .HasOne(j => j.Petugas)
+                .WithMany()
+                .HasForeignKey(j => j.PetugasId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relasi JurnalHarian -> Kandang (Many-to-One, optional)
+            modelBuilder.Entity<JurnalHarian>()
+                .HasOne(j => j.Kandang)
+                .WithMany()
+                .HasForeignKey(j => j.KandangId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
+            // Konfigurasi properti string yang required untuk JurnalHarian
+            modelBuilder.Entity<JurnalHarian>()
+                .Property(j => j.JudulKegiatan)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<JurnalHarian>()
+                .Property(j => j.DeskripsiKegiatan)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            modelBuilder.Entity<JurnalHarian>()
+                .Property(j => j.Catatan)
+                .HasMaxLength(500);
+
+            modelBuilder.Entity<JurnalHarian>()
+                .Property(j => j.FotoKegiatan)
+                .HasMaxLength(500);
         }
 
 

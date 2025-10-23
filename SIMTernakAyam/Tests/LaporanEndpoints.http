@@ -1,0 +1,49 @@
+@base_url = http://localhost:5164
+@token = your_jwt_token_here
+
+### Test Get Analisis Produktivitas (All Petugas)
+GET {{base_url}}/api/laporan/produktivitas
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Test Get Analisis Produktivitas by Petugas ID
+GET {{base_url}}/api/laporan/produktivitas/2aadb39d-b622-4fcc-9324-c6583ca7caf3
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Test Get Kesehatan Kandang (All)
+GET {{base_url}}/api/laporan/kesehatan-ayam
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Test Get Kesehatan Kandang by ID
+GET {{base_url}}/api/laporan/kesehatan-ayam/fd082b84-41c8-45d4-8480-ddb918f74cca
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Test Get Laporan Operasional (Default - This Month)
+GET {{base_url}}/api/laporan/operasional
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Test Get Laporan Operasional with Date Range
+GET {{base_url}}/api/laporan/operasional?startDate=2024-10-01&endDate=2024-10-31
+Accept: application/json
+Authorization: Bearer {{token}}
+
+###
+
+### Test Get Laporan Operasional with Preset
+GET {{base_url}}/api/laporan/operasional?preset=thismonth
+Accept: application/json
+Authorization: Bearer {{token}}

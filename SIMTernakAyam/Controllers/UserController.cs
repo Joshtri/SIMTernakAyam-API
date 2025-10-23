@@ -22,18 +22,26 @@ namespace SIMTernakAyam.Controllers
         }
 
         /// <summary>
-        /// Mendapatkan semua user
+        /// Mendapatkan semua user atau filter berdasarkan role
         /// </summary>
+        /// <param name="role">Optional role parameter untuk filter user</param>
         /// <returns>List of users</returns>
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<UserResponseDto>>), 200)]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers([FromQuery] RoleEnum? role = null)
         {
             try
             {
-                var users = await _userService.GetAllAsync();
+                var users = role.HasValue 
+                    ? await _userService.GetUsersByRoleAsync(role.Value)
+                    : await _userService.GetAllAsync();
+                
                 var response = UserResponseDto.FromEntities(users);
-                return Success(response, "Berhasil mengambil semua user.");
+                var message = role.HasValue 
+                    ? $"Berhasil mengambil user dengan role {role.Value}."
+                    : "Berhasil mengambil semua user.";
+                
+                return Success(response, message);
             }
             catch (Exception ex)
             {

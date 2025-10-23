@@ -9,7 +9,12 @@ namespace SIMTernakAyam.DTOs.Biaya
         public Guid PetugasId { get; set; }
         public string? PetugasNama { get; set; }
         public Guid? OperasionalId { get; set; }
+        public Guid? KandangId { get; set; }
+        public string? KandangNama { get; set; }
         public string? BuktiUrl { get; set; }
+        public string? Catatan { get; set; }
+        public int? Bulan { get; set; }
+        public int? Tahun { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
@@ -24,7 +29,12 @@ namespace SIMTernakAyam.DTOs.Biaya
                 PetugasId = biaya.PetugasId,
                 PetugasNama = biaya.Petugas?.FullName ?? biaya.Petugas?.Username,
                 OperasionalId = biaya.OperasionalId,
+                KandangId = biaya.KandangId,
+                KandangNama = biaya.Kandang?.NamaKandang,
                 BuktiUrl = biaya.BuktiUrl,
+                Catatan = biaya.Catatan,
+                Bulan = biaya.Bulan,
+                Tahun = biaya.Tahun,
                 CreatedAt = biaya.CreatedAt,
                 UpdateAt = biaya.UpdateAt
             };

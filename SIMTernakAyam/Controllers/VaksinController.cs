@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Vaksin;
+using SIMTernakAyam.Enums;
 using SIMTernakAyam.Services.Interfaces;
 
 namespace SIMTernakAyam.Controllers
@@ -91,6 +92,22 @@ namespace SIMTernakAyam.Controllers
             }
         }
 
+        [HttpGet("by-type/{tipe}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<VaksinResponseDto>>), 200)]
+        public async Task<IActionResult> GetByType(VaksinVitaminTypeEnum tipe)
+        {
+            try
+            {
+                var vaksins = await _vaksinService.GetByTypeAsync(tipe);
+                var response = VaksinResponseDto.FromEntities(vaksins);
+                return Success(response, $"Berhasil mengambil data {tipe}.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
         [HttpPost]
         [ProducesResponseType(typeof(Common.ApiResponse<VaksinResponseDto>), 201)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
@@ -109,7 +126,8 @@ namespace SIMTernakAyam.Controllers
                     NamaVaksin = dto.NamaVaksin,
                     Stok = dto.Stok,
                     Tahun = dto.Tahun,
-                    Bulan = dto.Bulan
+                    Bulan = dto.Bulan,
+                    Tipe = dto.Tipe
                 };
 
                 var result = await _vaksinService.CreateAsync(vaksin);
@@ -153,7 +171,8 @@ namespace SIMTernakAyam.Controllers
                     NamaVaksin = dto.NamaVaksin,
                     Stok = dto.Stok,
                     Tahun = dto.Tahun,
-                    Bulan = dto.Bulan
+                    Bulan = dto.Bulan,
+                    Tipe = dto.Tipe
                 };
 
                 var result = await _vaksinService.UpdateAsync(vaksin);

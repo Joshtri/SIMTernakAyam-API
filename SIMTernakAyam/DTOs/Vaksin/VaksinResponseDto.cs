@@ -1,3 +1,5 @@
+using SIMTernakAyam.Enums;
+
 namespace SIMTernakAyam.DTOs.Vaksin
 {
     public class VaksinResponseDto
@@ -5,9 +7,10 @@ namespace SIMTernakAyam.DTOs.Vaksin
         public Guid Id { get; set; }
         public string NamaVaksin { get; set; } = string.Empty;
         public int Stok { get; set; }
-
         public int Bulan { get; set; } // 1-12 (Januari-Desember)
         public int Tahun { get; set; } // Contoh: 2024, 2025
+        public VaksinVitaminTypeEnum Tipe { get; set; } // Vaksin atau Vitamin
+        public string TipeNama => Tipe.ToString(); // String representation untuk frontend
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
@@ -20,6 +23,7 @@ namespace SIMTernakAyam.DTOs.Vaksin
                 Stok = vaksin.Stok,
                 Bulan = vaksin.Bulan,
                 Tahun = vaksin.Tahun,
+                Tipe = vaksin.Tipe,
                 CreatedAt = vaksin.CreatedAt,
                 UpdateAt = vaksin.UpdateAt
             };

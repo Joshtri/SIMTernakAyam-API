@@ -1,3 +1,4 @@
+using SIMTernakAyam.Enums;
 using SIMTernakAyam.Models;
 using SIMTernakAyam.Repository.Interfaces;
 using SIMTernakAyam.Services.Interfaces;
@@ -92,6 +93,11 @@ namespace SIMTernakAyam.Services
             }
 
             return new ValidationResult { IsValid = true };
+        }
+
+        public async Task<IEnumerable<Vaksin>> GetByTypeAsync(VaksinVitaminTypeEnum tipe)
+        {
+            return await _vaksinRepository.GetByTypeAsync(tipe);
         }
     }
 }

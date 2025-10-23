@@ -5,8 +5,8 @@ namespace SIMTernakAyam.DTOs.JenisKegiatan
         public Guid Id { get; set; }
         public string NamaKegiatan { get; set; } = string.Empty;
         public string? Deskripsi { get; set; }
-        public string? Satuan { get; set; }
-        public decimal? BiayaDefault { get; set; }
+        //public string? Satuan { get; set; }
+        //public decimal? BiayaDefault { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
@@ -17,8 +17,8 @@ namespace SIMTernakAyam.DTOs.JenisKegiatan
                 Id = jenisKegiatan.Id,
                 NamaKegiatan = jenisKegiatan.NamaKegiatan,
                 Deskripsi = jenisKegiatan.Deskripsi,
-                Satuan = jenisKegiatan.Satuan,
-                BiayaDefault = jenisKegiatan.BiayaDefault,
+                //Satuan = jenisKegiatan.Satuan,
+                //BiayaDefault = jenisKegiatan.BiayaDefault,
                 CreatedAt = jenisKegiatan.CreatedAt,
                 UpdateAt = jenisKegiatan.UpdateAt
             };

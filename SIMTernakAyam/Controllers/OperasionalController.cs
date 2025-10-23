@@ -21,7 +21,7 @@ namespace SIMTernakAyam.Controllers
         {
             try
             {
-                var operasionals = await _operasionalService.GetAllAsync();
+                var operasionals = await _operasionalService.GetAllOperasionalWithDetailsAsync();
                 var response = OperasionalResponseDto.FromEntities(operasionals);
                 return Success(response, "Berhasil mengambil semua data operasional.");
             }
@@ -38,7 +38,7 @@ namespace SIMTernakAyam.Controllers
         {
             try
             {
-                var operasional = await _operasionalService.GetByIdAsync(id);
+                var operasional = await _operasionalService.GetOperasionalWithDetailsAsync(id);
                 if (operasional == null)
                 {
                     return NotFound("Data operasional tidak ditemukan.");

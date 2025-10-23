@@ -13,3 +13,4 @@ namespace SIMTernakAyam.Models
         public User? User { get; set; }
     }
 }
+        

@@ -20,7 +20,27 @@ namespace SIMTernakAyam.DTOs.Biaya
 
         public Guid? OperasionalId { get; set; }
 
+        /// <summary>
+        /// ID Kandang untuk biaya listrik dan air (opsional)
+        /// </summary>
+        public Guid? KandangId { get; set; }
+
         [StringLength(500, ErrorMessage = "URL bukti maksimal 500 karakter.")]
         public string? BuktiUrl { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Catatan maksimal 1000 karakter.")]
+        public string? Catatan { get; set; }
+
+        /// <summary>
+        /// Bulan untuk biaya recurring (1-12), wajib untuk Listrik dan Air
+        /// </summary>
+        [Range(1, 12, ErrorMessage = "Bulan harus antara 1-12.")]
+        public int? Bulan { get; set; }
+
+        /// <summary>
+        /// Tahun untuk biaya recurring, wajib untuk Listrik dan Air
+        /// </summary>
+        [Range(2000, 2100, ErrorMessage = "Tahun harus antara 2000-2100.")]
+        public int? Tahun { get; set; }
     }
 }

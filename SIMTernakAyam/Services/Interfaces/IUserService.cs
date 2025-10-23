@@ -16,6 +16,9 @@ namespace SIMTernakAyam.Services.Interfaces
         /// </summary>
         Task<User?> GetUserByUsernameAsync(string username);
 
+        //Task<IEnumerable<User>> GetAllAsync(List<RoleEnum> roles);
+
+
         /// <summary>
         /// Mendapatkan user berdasarkan email
         /// </summary>

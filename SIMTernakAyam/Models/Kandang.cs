@@ -13,5 +13,8 @@
 
         public ICollection<Ayam>? Ayams { get; set; }
 
+        // Relasi Many-to-Many dengan Asisten kandang
+        public ICollection<KandangAsisten>? KandangAsistens { get; set; }
+
     }
 }

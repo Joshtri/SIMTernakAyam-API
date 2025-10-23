@@ -63,6 +63,41 @@ namespace SIMTernakAyam.Repository
             return await _context.Biayas
                 .Include(b => b.Petugas)
                 .Include(b => b.Operasional)
+                .Include(b => b.Kandang)
+                .OrderByDescending(b => b.Tanggal)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Biaya>> GetByBulanTahunAsync(int bulan, int tahun)
+        {
+            return await _context.Biayas
+                .Include(b => b.Petugas)
+                .Include(b => b.Operasional)
+                .Include(b => b.Kandang)
+                .Where(b => b.Bulan == bulan && b.Tahun == tahun)
+                .OrderBy(b => b.KandangId)
+                .ThenBy(b => b.JenisBiaya)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Biaya>> GetByKandangBulanTahunAsync(Guid kandangId, int bulan, int tahun)
+        {
+            return await _context.Biayas
+                .Include(b => b.Petugas)
+                .Include(b => b.Operasional)
+                .Include(b => b.Kandang)
+                .Where(b => b.KandangId == kandangId && b.Bulan == bulan && b.Tahun == tahun)
+                .OrderBy(b => b.JenisBiaya)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Biaya>> GetByKandangIdAsync(Guid kandangId)
+        {
+            return await _context.Biayas
+                .Include(b => b.Petugas)
+                .Include(b => b.Operasional)
+                .Include(b => b.Kandang)
+                .Where(b => b.KandangId == kandangId)
                 .OrderByDescending(b => b.Tanggal)
                 .ToListAsync();
         }

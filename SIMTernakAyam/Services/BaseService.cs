@@ -88,7 +88,7 @@ namespace SIMTernakAyam.Services
         {
             try
             {
-                var existingEntity = await _repository.GetByIdAsync(entity.Id);
+                var existingEntity = await GetByIdNoTrackingAsync(entity.Id);
                 if (existingEntity == null)
                 {
                     return (false, "Data tidak ditemukan.");
@@ -124,6 +124,14 @@ namespace SIMTernakAyam.Services
                     : $"Terjadi kesalahan: {ex.Message}";
                 return (false, errorMessage);
             }
+        }
+
+        /// <summary>
+        /// Mendapatkan data berdasarkan ID tanpa tracking untuk menghindari konflik saat update
+        /// </summary>
+        protected virtual async Task<T?> GetByIdNoTrackingAsync(Guid id)
+        {
+            return await _repository.GetByIdNoTrackingAsync(id);
         }
 
         /// <summary>

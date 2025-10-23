@@ -1,3 +1,4 @@
+using SIMTernakAyam.DTOs.Biaya;
 using SIMTernakAyam.Models;
 using SIMTernakAyam.Repositories.Interfaces;
 using SIMTernakAyam.Repository.Interfaces;
@@ -81,6 +82,60 @@ namespace SIMTernakAyam.Services
                 entity.Tanggal = entity.Tanggal.ToUniversalTime();
             }
             await Task.CompletedTask;
+        }
+
+        public async Task<IEnumerable<Biaya>> GetBiayaByBulanTahunAsync(int bulan, int tahun)
+        {
+            return await _biayaRepository.GetByBulanTahunAsync(bulan, tahun);
+        }
+
+        public async Task<IEnumerable<Biaya>> GetBiayaByKandangAsync(Guid kandangId)
+        {
+            return await _biayaRepository.GetByKandangIdAsync(kandangId);
+        }
+
+        public async Task<RekapBiayaBulananDto> GetRekapBiayaBulananAsync(int bulan, int tahun)
+        {
+            var allBiaya = await _biayaRepository.GetByBulanTahunAsync(bulan, tahun);
+
+            var rekap = new RekapBiayaBulananDto
+            {
+                Bulan = bulan,
+                Tahun = tahun
+            };
+
+            // Group by KandangId
+            var groupedByKandang = allBiaya.GroupBy(b => b.KandangId);
+
+            foreach (var group in groupedByKandang)
+            {
+                var biayaList = group.ToList();
+                var firstBiaya = biayaList.First();
+
+                var biayaBulanan = new BiayaBulananResponseDto
+                {
+                    Bulan = bulan,
+                    Tahun = tahun,
+                    KandangId = group.Key,
+                    KandangNama = firstBiaya.Kandang?.NamaKandang ?? "Tanpa Kandang",
+                    TotalBiayaListrik = biayaList.Where(b => b.JenisBiaya.ToLower() == "listrik").Sum(b => b.Jumlah),
+                    TotalBiayaAir = biayaList.Where(b => b.JenisBiaya.ToLower() == "air").Sum(b => b.Jumlah),
+                    TotalBiayaLainnya = biayaList.Where(b => b.JenisBiaya.ToLower() != "listrik" && b.JenisBiaya.ToLower() != "air").Sum(b => b.Jumlah),
+                    DetailBiaya = BiayaResponseDto.FromEntities(biayaList)
+                };
+
+                biayaBulanan.TotalBiaya = biayaBulanan.TotalBiayaListrik + biayaBulanan.TotalBiayaAir + biayaBulanan.TotalBiayaLainnya;
+
+                rekap.PerKandang.Add(biayaBulanan);
+            }
+
+            // Calculate grand totals
+            rekap.GrandTotalBiayaListrik = rekap.PerKandang.Sum(k => k.TotalBiayaListrik);
+            rekap.GrandTotalBiayaAir = rekap.PerKandang.Sum(k => k.TotalBiayaAir);
+            rekap.GrandTotalBiayaLainnya = rekap.PerKandang.Sum(k => k.TotalBiayaLainnya);
+            rekap.GrandTotal = rekap.GrandTotalBiayaListrik + rekap.GrandTotalBiayaAir + rekap.GrandTotalBiayaLainnya;
+
+            return rekap;
         }
     }
 }

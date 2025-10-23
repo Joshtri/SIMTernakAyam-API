@@ -108,8 +108,8 @@ namespace SIMTernakAyam.Controllers
                 {
                     NamaKegiatan = dto.NamaKegiatan,
                     Deskripsi = dto.Deskripsi,
-                    Satuan = dto.Satuan,
-                    BiayaDefault = dto.BiayaDefault
+                    //Satuan = dto.Satuan,
+                    //BiayaDefault = dto.BiayaDefault
                 };
 
                 var result = await _jenisKegiatanService.CreateAsync(jenisKegiatan);
@@ -152,8 +152,8 @@ namespace SIMTernakAyam.Controllers
                     Id = dto.Id,
                     NamaKegiatan = dto.NamaKegiatan,
                     Deskripsi = dto.Deskripsi,
-                    Satuan = dto.Satuan,
-                    BiayaDefault = dto.BiayaDefault
+                    //Satuan = dto.Satuan,
+                    //BiayaDefault = dto.BiayaDefault
                 };
 
                 var result = await _jenisKegiatanService.UpdateAsync(jenisKegiatan);

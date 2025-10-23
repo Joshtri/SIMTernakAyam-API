@@ -6,7 +6,15 @@
       "Bash(dotnet build:*)",
       "Bash(Select-String -Pattern \"error|Error\" -Context 0,2)",
       "Bash(dotnet clean:*)",
-      "Bash(dotnet ef database update:*)"
+      "Bash(dotnet ef database update:*)",
+      "Bash(dir:*)",
+      "Bash(dotnet add package QuestPDF)",
+      "Bash(dotnet run)",
+      "Bash(timeout /t 5)",
+      "Bash(taskkill:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(dotnet run:*)",
+      "Bash(timeout /t 2)"
     ],
     "deny": [],
     "ask": []

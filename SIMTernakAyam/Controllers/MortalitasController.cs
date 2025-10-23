@@ -1,18 +1,41 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Mortalitas;
 using SIMTernakAyam.Services.Interfaces;
+using System.Security.Claims;
 
 namespace SIMTernakAyam.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/mortalitas")]
     public class MortalitasController : BaseController
     {
         private readonly IMortalitasService _mortalitasService;
+        private readonly INotificationService _notificationService;
+        private readonly IUserService _userService;
+        private readonly IAyamService _ayamService;
 
-        public MortalitasController(IMortalitasService mortalitasService)
+        public MortalitasController(
+            IMortalitasService mortalitasService,
+            INotificationService notificationService,
+            IUserService userService,
+            IAyamService ayamService)
         {
             _mortalitasService = mortalitasService;
+            _notificationService = notificationService;
+            _userService = userService;
+            _ayamService = ayamService;
+        }
+
+        private Guid GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+            {
+                throw new UnauthorizedAccessException("User tidak terautentikasi");
+            }
+            return Guid.Parse(userIdClaim);
         }
 
         [HttpGet]
@@ -96,6 +119,32 @@ namespace SIMTernakAyam.Controllers
 
                 // Get enhanced response with calculations
                 var enhancedResponse = await _mortalitasService.GetMortalitasWithDetailsAsync(result.Data!.Id);
+
+                // 🔔 KIRIM NOTIFIKASI OTOMATIS (HIGH PRIORITY - Mortalitas!)
+                try
+                {
+                    var userId = GetCurrentUserId();
+                    var user = await _userService.GetByIdAsync(userId);
+                    var ayam = await _ayamService.GetByIdAsync(dto.AyamId);
+
+                    if (ayam?.Kandang != null)
+                    {
+                        await _notificationService.NotifyMortalitasAsync(
+                            userId,
+                            user?.FullName ?? user?.Username ?? "Petugas",
+                            ayam.Kandang.NamaKandang,
+                            dto.JumlahKematian,
+                            dto.PenyebabKematian,
+                            ayam.Kandang.Id
+                        );
+                    }
+                }
+                catch (Exception notifEx)
+                {
+                    // Log error tapi jangan fail request
+                    Console.WriteLine($"Failed to send notification: {notifEx.Message}");
+                }
+
                 return Created(enhancedResponse, result.Message);
             }
             catch (Exception ex)

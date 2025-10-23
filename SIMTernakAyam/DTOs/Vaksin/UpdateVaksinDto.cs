@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SIMTernakAyam.Enums;
 
 namespace SIMTernakAyam.DTOs.Vaksin
 {
@@ -7,8 +8,8 @@ namespace SIMTernakAyam.DTOs.Vaksin
         [Required(ErrorMessage = "ID wajib diisi.")]
         public Guid Id { get; set; }
 
-        [Required(ErrorMessage = "Nama vaksin wajib diisi.")]
-        [StringLength(100, ErrorMessage = "Nama vaksin maksimal 100 karakter.")]
+        [Required(ErrorMessage = "Nama vaksin/vitamin wajib diisi.")]
+        [StringLength(100, ErrorMessage = "Nama vaksin/vitamin maksimal 100 karakter.")]
         public string NamaVaksin { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Stok wajib diisi.")]
@@ -22,5 +23,11 @@ namespace SIMTernakAyam.DTOs.Vaksin
         [Required(ErrorMessage = "Tahun wajib diisi.")]
         [Range(2000, 2100, ErrorMessage = "Tahun harus antara 2000-2100.")]
         public int Tahun { get; set; }
+
+        /// <summary>
+        /// Tipe: Vaksin atau Vitamin
+        /// </summary>
+        [Required(ErrorMessage = "Tipe wajib diisi.")]
+        public VaksinVitaminTypeEnum Tipe { get; set; }
     }
 }

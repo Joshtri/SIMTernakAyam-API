@@ -32,6 +32,33 @@ namespace SIMTernakAyam.Controllers
         }
 
         /// <summary>
+        /// Return success response dengan pagination
+        /// </summary>
+        protected IActionResult SuccessWithPagination<T>(T data, int totalCount, int page, int pageSize, string message = "Berhasil")
+        {
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            var response = new
+            {
+                success = true,
+                message = message,
+                data = data,
+                pagination = new
+                {
+                    currentPage = page,
+                    pageSize = pageSize,
+                    totalCount = totalCount,
+                    totalPages = totalPages,
+                    hasNextPage = page < totalPages,
+                    hasPreviousPage = page > 1
+                },
+                errors = (object?)null,
+                statusCode = 200,
+                timestamp = DateTime.UtcNow
+            };
+            return StatusCode(200, response);
+        }
+
+        /// <summary>
         /// Return error response
         /// </summary>
         protected IActionResult Error(string message, int statusCode = 400)

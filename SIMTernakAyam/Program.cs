@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using SIMTernakAyam.Common;
 using SIMTernakAyam.Data;
 using SIMTernakAyam.Infrastructure;
 using SIMTernakAyam.Repositories.Interfaces;
@@ -14,7 +15,12 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Database Configuration
+var connectionDb = builder.Configuration.GetConnectionString("DefaultConnection");
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(connectionDb));
 
 // CORS Configuration
 var corsPolicy = "AllowFrontend";
@@ -23,28 +29,18 @@ builder.Services.AddCors(options =>
     options.AddPolicy(corsPolicy, policy =>
     {
         policy.WithOrigins(
-                "http://localhost:5173",  // Vite default port
-                "http://localhost:3000",  // React default port
-                "http://localhost:4200"   // Angular default port
-            )
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:4200")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
     });
 });
 
-// Database Configuration
-var connectionDb = builder.Configuration.GetConnectionString("DefaultConnection");
-
-// Configure Npgsql to handle DateTime properly
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionDb));
-
-// JWT Authentication Configuration
+// JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
+var secretKey = jwtSettings["SecretKey"]!;
 
 builder.Services.AddAuthentication(options =>
 {
@@ -61,20 +57,18 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
-        ClockSkew = TimeSpan.Zero // Remove default 5 minute tolerance for expiry
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+        ClockSkew = TimeSpan.Zero
     };
 });
 
 builder.Services.AddAuthorization();
 
-// Register JWT Service
+// Dependency Injection
 builder.Services.AddScoped<IJwtService, JwtService>();
-
-// Register Dashboard Service
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 
-// Repository Registration - Dependency Injection
+// Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IKandangRepository, KandangRepository>();
 builder.Services.AddScoped<IPanenRepository, PanenRepository>();
@@ -85,8 +79,11 @@ builder.Services.AddScoped<IJenisKegiatanRepository, JenisKegiatanRepository>();
 builder.Services.AddScoped<IMortalitasRepository, MortalitasRepository>();
 builder.Services.AddScoped<IOperasionalRepository, OperasionalRepository>();
 builder.Services.AddScoped<IAyamRepository, AyamRepository>();
+builder.Services.AddScoped<IKandangAsistenRepository, KandangAsistenRepository>();
+builder.Services.AddScoped<IJurnalHarianRepository, JurnalHarianRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
-// Service Registration - Dependency Injection
+// Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IkandangService, KandangService>();
 builder.Services.AddScoped<IPanenService, PanenService>();
@@ -97,29 +94,24 @@ builder.Services.AddScoped<IJenisKegiatanService, JenisKegiatanService>();
 builder.Services.AddScoped<IMortalitasService, MortalitasService>();
 builder.Services.AddScoped<IOperasionalService, OperasionalService>();
 builder.Services.AddScoped<IAyamService, AyamService>();
+builder.Services.AddScoped<IStokService, StokService>();
+builder.Services.AddScoped<ILaporanService, LaporanService>();
+builder.Services.AddScoped<IKandangAsistenService, KandangAsistenService>();
+builder.Services.AddScoped<IChartService, ChartService>();
+builder.Services.AddScoped<IJurnalHarianService, JurnalHarianService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
+// Controller & JSON Config
 builder.Services.AddControllers(options =>
 {
-    // ubah token [controller]/[action] -> snake_case
-    options.Conventions.Add(
-        new RouteTokenTransformerConvention(new SnakeCaseParameterTransformer()));
+    options.Conventions.Add(new RouteTokenTransformerConvention(new SnakeCaseParameterTransformer()));
 })
 .AddJsonOptions(options =>
 {
-    // Serialize enum sebagai string (bukan angka)
     options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-
-    // Case insensitive untuk enum
     options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
-builder.Services.AddRouting(o =>
-{
-    o.LowercaseUrls = true;
-    o.LowercaseQueryStrings = true;
-});
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -134,7 +126,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // JWT Authentication untuk Swagger
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Description = "JWT Authorization header menggunakan Bearer scheme. Format: 'Bearer {token}'",
@@ -162,22 +153,95 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
+// Middleware
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseHttpsRedirection();
-
-// Enable CORS - HARUS SEBELUM UseAuthentication dan UseAuthorization
 app.UseCors(corsPolicy);
-
-// Add Authentication & Authorization middleware
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SIM Ternak Ayam API v1");
+    c.RoutePrefix = "swagger";
+    c.DocumentTitle = "SIM Ternak Ayam API Documentation";
+    c.DefaultModelsExpandDepth(-1);
+    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+});
+
+// Controller Mapping
 app.MapControllers();
+
+// Root Redirect
+app.MapGet("/", () => Results.Redirect("/swagger"))
+    .WithName("Root")
+    .WithTags("Navigation")
+    .WithSummary("Redirect to API Documentation")
+    .ExcludeFromDescription();
+
+// Health Check Endpoint
+app.MapGet("/health", () => Results.Ok(new
+{
+    Status = "Healthy",
+    Timestamp = DateTime.UtcNow,
+    Version = "1.0.0",
+    Service = "SIM Ternak Ayam API"
+}))
+    .WithName("HealthCheck")
+    .WithTags("Health")
+    .WithSummary("Check API health status");
+
+// API Info Endpoint
+app.MapGet("/api", () => Results.Ok(new
+{
+    Message = "Welcome to SIM Ternak Ayam API",
+    Documentation = "/swagger",
+    Health = "/health",
+    Version = "1.0.0",
+    Endpoints = new
+    {
+        Users = "/api/user",
+        Kandang = "/api/kandang",
+        Panen = "/api/panen",
+        Vaksin = "/api/vaksin",
+        Ayam = "/api/ayam"
+        // Tambahkan lainnya jika perlu
+    }
+}))
+    .WithName("ApiInfo")
+    .WithTags("Info")
+    .WithSummary("Get API information");
+
+// Catch-all 404
+app.MapFallback(() => Results.NotFound(new
+{
+    Error = "Endpoint not found",
+    Message = "The requested endpoint does not exist. Please check the URL and try again.",
+    Documentation = "/swagger",
+    AvailableEndpoints = "/api",
+    Timestamp = DateTime.UtcNow
+}))
+.ExcludeFromDescription();
+
+// DB Connection Log
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var log = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        if (db.Database.CanConnect())
+            log.LogInformation("✅ Database connected successfully");
+        else
+            log.LogWarning("⚠️ Database connection failed");
+    }
+    catch (Exception ex)
+    {
+        log.LogError("❌ Database connection error: {Error}", ex.Message);
+    }
+}
 
 app.Run();

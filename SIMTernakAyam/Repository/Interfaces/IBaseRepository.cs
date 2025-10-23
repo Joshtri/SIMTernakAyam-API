@@ -4,6 +4,7 @@ namespace SIMTernakAyam.Repositories.Interfaces
     public interface IBaseRepository<T>
     {
         Task<T?> GetByIdAsync(Guid id);
+        Task<T?> GetByIdNoTrackingAsync(Guid id);
 
         IEnumerable<T> FindWhere(Func<T,bool> filter);
         Task<IEnumerable<T>> GetAllAsync();

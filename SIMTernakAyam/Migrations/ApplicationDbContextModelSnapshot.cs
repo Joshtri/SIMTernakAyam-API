@@ -64,6 +64,12 @@ namespace SIMTernakAyam.Migrations
                     b.Property<string>("BuktiUrl")
                         .HasColumnType("text");
 
+                    b.Property<int?>("Bulan")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Catatan")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -75,11 +81,17 @@ namespace SIMTernakAyam.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<Guid?>("KandangId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("OperasionalId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("PetugasId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("Tahun")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("Tanggal")
                         .HasColumnType("timestamp without time zone");
@@ -88,6 +100,8 @@ namespace SIMTernakAyam.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("KandangId");
 
                     b.HasIndex("OperasionalId");
 
@@ -128,6 +142,60 @@ namespace SIMTernakAyam.Migrations
                     b.ToTable("JenisKegiatans");
                 });
 
+            modelBuilder.Entity("SIMTernakAyam.Models.JurnalHarian", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Catatan")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DeskripsiKegiatan")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("FotoKegiatan")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("JudulKegiatan")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("KandangId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PetugasId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Tanggal")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("UpdateAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<TimeSpan>("WaktuMulai")
+                        .HasColumnType("interval");
+
+                    b.Property<TimeSpan>("WaktuSelesai")
+                        .HasColumnType("interval");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KandangId");
+
+                    b.HasIndex("PetugasId");
+
+                    b.ToTable("JurnalHarians");
+                });
+
             modelBuilder.Entity("SIMTernakAyam.Models.Kandang", b =>
                 {
                     b.Property<Guid>("Id")
@@ -159,6 +227,40 @@ namespace SIMTernakAyam.Migrations
                     b.HasIndex("petugasId");
 
                     b.ToTable("Kandangs");
+                });
+
+            modelBuilder.Entity("SIMTernakAyam.Models.KandangAsisten", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AsistenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Catatan")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("IsAktif")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("KandangId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdateAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AsistenId");
+
+                    b.HasIndex("KandangId", "AsistenId")
+                        .IsUnique();
+
+                    b.ToTable("KandangAsistens");
                 });
 
             modelBuilder.Entity("SIMTernakAyam.Models.Mortalitas", b =>
@@ -410,6 +512,9 @@ namespace SIMTernakAyam.Migrations
                     b.Property<int>("Tahun")
                         .HasColumnType("integer");
 
+                    b.Property<int>("Tipe")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("UpdateAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -435,6 +540,11 @@ namespace SIMTernakAyam.Migrations
 
             modelBuilder.Entity("SIMTernakAyam.Models.Biaya", b =>
                 {
+                    b.HasOne("SIMTernakAyam.Models.Kandang", "Kandang")
+                        .WithMany()
+                        .HasForeignKey("KandangId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SIMTernakAyam.Models.Operasional", "Operasional")
                         .WithMany()
                         .HasForeignKey("OperasionalId")
@@ -446,7 +556,27 @@ namespace SIMTernakAyam.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Kandang");
+
                     b.Navigation("Operasional");
+
+                    b.Navigation("Petugas");
+                });
+
+            modelBuilder.Entity("SIMTernakAyam.Models.JurnalHarian", b =>
+                {
+                    b.HasOne("SIMTernakAyam.Models.Kandang", "Kandang")
+                        .WithMany()
+                        .HasForeignKey("KandangId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SIMTernakAyam.Models.User", "Petugas")
+                        .WithMany()
+                        .HasForeignKey("PetugasId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Kandang");
 
                     b.Navigation("Petugas");
                 });
@@ -460,6 +590,25 @@ namespace SIMTernakAyam.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SIMTernakAyam.Models.KandangAsisten", b =>
+                {
+                    b.HasOne("SIMTernakAyam.Models.User", "Asisten")
+                        .WithMany()
+                        .HasForeignKey("AsistenId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SIMTernakAyam.Models.Kandang", "Kandang")
+                        .WithMany("KandangAsistens")
+                        .HasForeignKey("KandangId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asisten");
+
+                    b.Navigation("Kandang");
                 });
 
             modelBuilder.Entity("SIMTernakAyam.Models.Mortalitas", b =>
@@ -539,6 +688,8 @@ namespace SIMTernakAyam.Migrations
             modelBuilder.Entity("SIMTernakAyam.Models.Kandang", b =>
                 {
                     b.Navigation("Ayams");
+
+                    b.Navigation("KandangAsistens");
                 });
 
             modelBuilder.Entity("SIMTernakAyam.Models.User", b =>
