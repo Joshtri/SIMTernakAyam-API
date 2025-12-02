@@ -16,6 +16,7 @@ namespace SIMTernakAyam.DTOs.Mortalitas
         public int JumlahKematian { get; set; }
         public string PenyebabKematian { get; set; } = string.Empty;
         public string? FotoMortalitas { get; set; }  // Path foto bukti mortalitas
+        public string? FotoMortalitasBase64 { get; set; }  // Base64 string untuk display
 
         // Perhitungan dan Statistik
         public int JumlahAyamSebelumMati { get; set; }

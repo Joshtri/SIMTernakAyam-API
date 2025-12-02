@@ -47,6 +47,14 @@ namespace SIMTernakAyam.Services
                     mortalitas.Ayam?.KandangId ?? Guid.Empty);
 
                 var enhancedDto = MortalitasResponseDto.FromEntity(mortalitas, totalSebelum, kapasitas);
+
+                // Convert image to base64 if exists (optional for list - might be slow)
+                // Uncomment if you want base64 in list response too
+                // if (!string.IsNullOrEmpty(mortalitas.FotoMortalitas))
+                // {
+                //     enhancedDto.FotoMortalitasBase64 = await ConvertImageToBase64(mortalitas.FotoMortalitas);
+                // }
+
                 enhancedList.Add(enhancedDto);
             }
 
@@ -85,7 +93,15 @@ namespace SIMTernakAyam.Services
             var kapasitas = await _mortalitasRepository.GetKandangCapacityAsync(
                 mortalitas.Ayam?.KandangId ?? Guid.Empty);
 
-            return MortalitasResponseDto.FromEntity(mortalitas, totalSebelum, kapasitas);
+            var response = MortalitasResponseDto.FromEntity(mortalitas, totalSebelum, kapasitas);
+
+            // Convert image file to base64 if exists
+            if (!string.IsNullOrEmpty(mortalitas.FotoMortalitas))
+            {
+                response.FotoMortalitasBase64 = await ConvertImageToBase64(mortalitas.FotoMortalitas);
+            }
+
+            return response;
         }
 
         // Get mortalitas by ayam ID
@@ -222,7 +238,20 @@ namespace SIMTernakAyam.Services
 
         private async Task<string> SaveFileAsync(IFormFile file)
         {
-            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "mortalitas");
+            // Get web root path or use ContentRootPath as fallback
+            var webRoot = _environment.WebRootPath ?? _environment.ContentRootPath;
+
+            // If WebRootPath is null, create wwwroot folder in ContentRootPath
+            if (string.IsNullOrEmpty(_environment.WebRootPath))
+            {
+                webRoot = Path.Combine(_environment.ContentRootPath, "wwwroot");
+                if (!Directory.Exists(webRoot))
+                {
+                    Directory.CreateDirectory(webRoot);
+                }
+            }
+
+            var uploadsFolder = Path.Combine(webRoot, "uploads", "mortalitas");
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);
@@ -243,7 +272,8 @@ namespace SIMTernakAyam.Services
         {
             try
             {
-                var fullPath = Path.Combine(_environment.WebRootPath, filePath.TrimStart('/'));
+                var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
+                var fullPath = Path.Combine(webRoot, filePath.TrimStart('/'));
                 if (File.Exists(fullPath))
                 {
                     File.Delete(fullPath);
@@ -252,6 +282,47 @@ namespace SIMTernakAyam.Services
             catch
             {
                 // Log error but don't throw
+            }
+        }
+
+        /// <summary>
+        /// Convert image file to base64 string
+        /// </summary>
+        private async Task<string?> ConvertImageToBase64(string imagePath)
+        {
+            try
+            {
+                var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
+                var fullPath = Path.Combine(webRoot, imagePath.TrimStart('/'));
+
+                if (!File.Exists(fullPath))
+                {
+                    return null;
+                }
+
+                // Read file as bytes
+                var imageBytes = await File.ReadAllBytesAsync(fullPath);
+
+                // Detect content type from file extension
+                var extension = Path.GetExtension(fullPath).ToLower();
+                var contentType = extension switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".bmp" => "image/bmp",
+                    ".webp" => "image/webp",
+                    _ => "image/jpeg" // default
+                };
+
+                // Convert to base64 with data URI prefix
+                var base64String = Convert.ToBase64String(imageBytes);
+                return $"data:{contentType};base64,{base64String}";
+            }
+            catch
+            {
+                // If conversion fails, return null
+                return null;
             }
         }
     }

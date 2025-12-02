@@ -156,6 +156,10 @@ var app = builder.Build();
 // Middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseHttpsRedirection();
+
+// Static Files - Enable serving files from wwwroot folder
+app.UseStaticFiles();
+
 app.UseCors(corsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
