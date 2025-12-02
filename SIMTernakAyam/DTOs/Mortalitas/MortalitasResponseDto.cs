@@ -15,7 +15,8 @@ namespace SIMTernakAyam.DTOs.Mortalitas
         public DateTime TanggalKematian { get; set; }
         public int JumlahKematian { get; set; }
         public string PenyebabKematian { get; set; } = string.Empty;
-        
+        public string? FotoMortalitas { get; set; }  // Path foto bukti mortalitas
+
         // Perhitungan dan Statistik
         public int JumlahAyamSebelumMati { get; set; }
         public int JumlahAyamSesudahMati { get; set; }
@@ -58,7 +59,8 @@ namespace SIMTernakAyam.DTOs.Mortalitas
                 TanggalKematian = mortalitas.TanggalKematian,
                 JumlahKematian = mortalitas.JumlahKematian,
                 PenyebabKematian = mortalitas.PenyebabKematian,
-                
+                FotoMortalitas = mortalitas.FotoMortalitas,
+
                 JumlahAyamSebelumMati = totalSebelum,
                 JumlahAyamSesudahMati = totalSesudah,
                 PersentaseMortalitas = Math.Round(persentaseMortalitas, 2),

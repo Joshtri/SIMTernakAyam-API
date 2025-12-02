@@ -38,6 +38,55 @@ namespace SIMTernakAyam.Controllers
             return Guid.Parse(userIdClaim);
         }
 
+        /// <summary>
+        /// Helper method untuk convert base64 string ke IFormFile
+        /// </summary>
+        private IFormFile? ConvertBase64ToFormFile(string base64String, string? fileName = null)
+        {
+            try
+            {
+                // Remove data:image/jpeg;base64, prefix if exists
+                var base64Data = base64String;
+                if (base64String.Contains(","))
+                {
+                    base64Data = base64String.Split(',')[1];
+                }
+
+                var bytes = Convert.FromBase64String(base64Data);
+                var stream = new MemoryStream(bytes);
+
+                // Determine file name and content type
+                var extension = "jpg";
+                var contentType = "image/jpeg";
+
+                if (!string.IsNullOrEmpty(fileName))
+                {
+                    extension = Path.GetExtension(fileName).TrimStart('.');
+                }
+                else
+                {
+                    // Try to detect from base64 prefix
+                    if (base64String.StartsWith("data:image/png"))
+                    {
+                        extension = "png";
+                        contentType = "image/png";
+                    }
+                }
+
+                fileName = fileName ?? $"mortalitas_{Guid.NewGuid()}.{extension}";
+
+                return new FormFile(stream, 0, bytes.Length, "file", fileName)
+                {
+                    Headers = new HeaderDictionary(),
+                    ContentType = contentType
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<MortalitasResponseDto>>), 200)]
         public async Task<IActionResult> GetAll([FromQuery] string? search = null, [FromQuery] Guid? kandangId = null)
@@ -102,6 +151,13 @@ namespace SIMTernakAyam.Controllers
                     return ValidationError(ModelState);
                 }
 
+                // Convert base64 to IFormFile if exists
+                IFormFile? fotoFile = null;
+                if (!string.IsNullOrEmpty(dto.FotoMortalitasBase64))
+                {
+                    fotoFile = ConvertBase64ToFormFile(dto.FotoMortalitasBase64, dto.FotoMortalitasFileName);
+                }
+
                 var mortalitas = new Models.Mortalitas
                 {
                     AyamId = dto.AyamId,
@@ -110,7 +166,7 @@ namespace SIMTernakAyam.Controllers
                     PenyebabKematian = dto.PenyebabKematian
                 };
 
-                var result = await _mortalitasService.CreateAsync(mortalitas);
+                var result = await _mortalitasService.CreateAsync(mortalitas, fotoFile);
 
                 if (!result.Success)
                 {
@@ -172,6 +228,13 @@ namespace SIMTernakAyam.Controllers
                     return Error("ID di URL tidak sesuai dengan ID di body.", 400);
                 }
 
+                // Convert base64 to IFormFile if exists
+                IFormFile? fotoFile = null;
+                if (!string.IsNullOrEmpty(dto.FotoMortalitasBase64))
+                {
+                    fotoFile = ConvertBase64ToFormFile(dto.FotoMortalitasBase64, dto.FotoMortalitasFileName);
+                }
+
                 var mortalitas = new Models.Mortalitas
                 {
                     Id = dto.Id,
@@ -181,7 +244,7 @@ namespace SIMTernakAyam.Controllers
                     PenyebabKematian = dto.PenyebabKematian
                 };
 
-                var result = await _mortalitasService.UpdateAsync(mortalitas);
+                var result = await _mortalitasService.UpdateAsync(mortalitas, fotoFile);
 
                 if (!result.Success)
                 {

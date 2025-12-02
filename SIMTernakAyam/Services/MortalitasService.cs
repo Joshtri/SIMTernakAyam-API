@@ -10,15 +10,18 @@ namespace SIMTernakAyam.Services
         private readonly IMortalitasRepository _mortalitasRepository;
         private readonly IAyamRepository _ayamRepository;
         private readonly IKandangRepository _kandangRepository;
+        private readonly IWebHostEnvironment _environment;
 
         public MortalitasService(
-            IMortalitasRepository mortalitasRepository, 
+            IMortalitasRepository mortalitasRepository,
             IAyamRepository ayamRepository,
-            IKandangRepository kandangRepository) : base(mortalitasRepository)
+            IKandangRepository kandangRepository,
+            IWebHostEnvironment environment) : base(mortalitasRepository)
         {
             _mortalitasRepository = mortalitasRepository;
             _ayamRepository = ayamRepository;
             _kandangRepository = kandangRepository;
+            _environment = environment;
         }
 
         // Get all mortalitas with detailed calculations
@@ -174,6 +177,82 @@ namespace SIMTernakAyam.Services
                 entity.TanggalKematian = entity.TanggalKematian.ToUniversalTime();
             }
             await Task.CompletedTask;
+        }
+
+        // Overload CreateAsync with IFormFile support
+        public new async Task<(bool Success, string Message, Mortalitas? Data)> CreateAsync(Mortalitas entity, IFormFile? fotoMortalitas = null)
+        {
+            // Handle file upload
+            if (fotoMortalitas != null && fotoMortalitas.Length > 0)
+            {
+                entity.FotoMortalitas = await SaveFileAsync(fotoMortalitas);
+            }
+
+            return await base.CreateAsync(entity);
+        }
+
+        // Overload UpdateAsync with IFormFile support
+        public new async Task<(bool Success, string Message)> UpdateAsync(Mortalitas entity, IFormFile? fotoMortalitas = null)
+        {
+            // Get existing entity
+            var existingEntity = await _mortalitasRepository.GetByIdAsync(entity.Id);
+            if (existingEntity == null)
+            {
+                return (false, "Data mortalitas tidak ditemukan.");
+            }
+
+            // Handle file upload
+            if (fotoMortalitas != null && fotoMortalitas.Length > 0)
+            {
+                // Delete old file if exists
+                if (!string.IsNullOrEmpty(existingEntity.FotoMortalitas))
+                {
+                    DeleteFile(existingEntity.FotoMortalitas);
+                }
+                entity.FotoMortalitas = await SaveFileAsync(fotoMortalitas);
+            }
+            else
+            {
+                // Keep existing photo if no new photo provided
+                entity.FotoMortalitas = existingEntity.FotoMortalitas;
+            }
+
+            return await base.UpdateAsync(entity);
+        }
+
+        private async Task<string> SaveFileAsync(IFormFile file)
+        {
+            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "mortalitas");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var fileName = $"{Guid.NewGuid()}_{file.FileName}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            return $"/uploads/mortalitas/{fileName}";
+        }
+
+        private void DeleteFile(string filePath)
+        {
+            try
+            {
+                var fullPath = Path.Combine(_environment.WebRootPath, filePath.TrimStart('/'));
+                if (File.Exists(fullPath))
+                {
+                    File.Delete(fullPath);
+                }
+            }
+            catch
+            {
+                // Log error but don't throw
+            }
         }
     }
 }

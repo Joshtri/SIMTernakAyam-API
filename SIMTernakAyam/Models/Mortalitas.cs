@@ -8,5 +8,6 @@
         public DateTime TanggalKematian { get; set; }
         public int JumlahKematian { get; set; }
         public string PenyebabKematian { get; set; }
+        public string? FotoMortalitas { get; set; }  // Path foto bukti mortalitas
     }
 }
