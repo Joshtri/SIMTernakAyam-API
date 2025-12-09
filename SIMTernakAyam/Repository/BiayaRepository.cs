@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SIMTernakAyam.Data;
 using SIMTernakAyam.Models;
 using SIMTernakAyam.Repository.Interfaces;
+using SIMTernakAyam.Enums;
 
 namespace SIMTernakAyam.Repository
 {
@@ -9,6 +10,25 @@ namespace SIMTernakAyam.Repository
     {
         public BiayaRepository(ApplicationDbContext context) : base(context)
         {
+        }
+
+        public override async Task<IEnumerable<Biaya>> GetAllAsync()
+        {
+            return await _context.Biayas
+                .Include(b => b.Petugas)
+                .Include(b => b.Kandang)
+                .Include(b => b.Operasional)
+                .OrderByDescending(b => b.Tanggal)
+                .ToListAsync();
+        }
+
+        public override async Task<Biaya?> GetByIdAsync(Guid id)
+        {
+            return await _context.Biayas
+                .Include(b => b.Petugas)
+                .Include(b => b.Kandang)
+                .Include(b => b.Operasional)
+                .FirstOrDefaultAsync(b => b.Id == id);
         }
 
         public async Task<IEnumerable<Biaya>> GetByPetugasIdAsync(Guid petugasId)
@@ -100,6 +120,45 @@ namespace SIMTernakAyam.Repository
                 .Where(b => b.KandangId == kandangId)
                 .OrderByDescending(b => b.Tanggal)
                 .ToListAsync();
+        }
+
+        public async Task<Biaya?> GetSingleByOperasionalIdAsync(Guid operasionalId)
+        {
+            return await _context.Biayas
+                .AsNoTracking()
+                .Include(b => b.Petugas)
+                .Include(b => b.Operasional)
+                .Include(b => b.Kandang)
+                .FirstOrDefaultAsync(b => b.OperasionalId == operasionalId);
+        }
+
+        public async Task<IEnumerable<Biaya>> GetByKategoriBiayaAsync(KategoriBiayaEnum kategori)
+        {
+            return await _context.Biayas
+                .Include(b => b.Petugas)
+                .Include(b => b.Operasional)
+                .Include(b => b.Kandang)
+                .Where(b => b.KategoriBiaya == kategori)
+                .OrderByDescending(b => b.Tanggal)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Biaya>> GetByKategoriBiayaAndDateRangeAsync(KategoriBiayaEnum kategori, DateTime startDate, DateTime endDate)
+        {
+            return await _context.Biayas
+                .Include(b => b.Petugas)
+                .Include(b => b.Operasional)
+                .Include(b => b.Kandang)
+                .Where(b => b.KategoriBiaya == kategori && b.Tanggal >= startDate && b.Tanggal <= endDate)
+                .OrderByDescending(b => b.Tanggal)
+                .ToListAsync();
+        }
+
+        public async Task<decimal> GetTotalBiayaByKategoriBiayaAndDateRangeAsync(KategoriBiayaEnum kategori, DateTime startDate, DateTime endDate)
+        {
+            return await _context.Biayas
+                .Where(b => b.KategoriBiaya == kategori && b.Tanggal >= startDate && b.Tanggal <= endDate)
+                .SumAsync(b => b.Jumlah);
         }
     }
 }

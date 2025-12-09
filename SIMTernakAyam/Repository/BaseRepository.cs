@@ -53,7 +53,20 @@ namespace SIMTernakAyam.Repository
 
         public virtual void UpdateAsync(T entity)
         {
-            _database.Update(entity);
+            // Cek apakah entity sudah di-track
+            var trackedEntity = _context.Entry(entity).Entity;
+            var isTracked = _context.Entry(entity).State != EntityState.Detached;
+
+            if (isTracked)
+            {
+                // Jika sudah di-track, update state
+                _context.Entry(entity).State = EntityState.Modified;
+            }
+            else
+            {
+                // Jika belum di-track, gunakan Update
+                _database.Update(entity);
+            }
         }
     }
 }

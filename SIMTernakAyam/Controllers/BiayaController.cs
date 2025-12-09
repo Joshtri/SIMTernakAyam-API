@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Biaya;
 using SIMTernakAyam.Services.Interfaces;
+using SIMTernakAyam.Enums;
 
 namespace SIMTernakAyam.Controllers
 {
@@ -16,13 +17,13 @@ namespace SIMTernakAyam.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(Common.ApiResponse<List<BiayaResponseDto>>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<BiayaListResponseDto>>), 200)]
         public async Task<IActionResult> GetAll()
         {
             try
             {
                 var biayas = await _biayaService.GetAllAsync();
-                var response = BiayaResponseDto.FromEntities(biayas);
+                var response = BiayaListResponseDto.FromEntities(biayas);
                 return Success(response, "Berhasil mengambil semua data biaya.");
             }
             catch (Exception ex)
@@ -69,12 +70,13 @@ namespace SIMTernakAyam.Controllers
                 var biaya = new Models.Biaya
                 {
                     JenisBiaya = dto.JenisBiaya,
+                    KategoriBiaya = dto.KategoriBiaya,
                     Tanggal = dto.Tanggal,
                     Jumlah = dto.Jumlah,
                     PetugasId = dto.PetugasId,
                     OperasionalId = dto.OperasionalId,
                     KandangId = dto.KandangId,
-                    BuktiUrl = dto.BuktiUrl,
+                    BuktiBase64 = dto.BuktiBase64,
                     Catatan = dto.Catatan,
                     Bulan = dto.Bulan,
                     Tahun = dto.Tahun
@@ -119,11 +121,16 @@ namespace SIMTernakAyam.Controllers
                 {
                     Id = dto.Id,
                     JenisBiaya = dto.JenisBiaya,
+                    KategoriBiaya = dto.KategoriBiaya,
                     Tanggal = dto.Tanggal,
                     Jumlah = dto.Jumlah,
                     PetugasId = dto.PetugasId,
                     OperasionalId = dto.OperasionalId,
-                    BuktiUrl = dto.BuktiUrl
+                    KandangId = dto.KandangId,
+                    BuktiBase64 = dto.BuktiBase64,
+                    Catatan = dto.Catatan,
+                    Bulan = dto.Bulan,
+                    Tahun = dto.Tahun
                 };
 
                 var result = await _biayaService.UpdateAsync(biaya);
@@ -184,6 +191,81 @@ namespace SIMTernakAyam.Controllers
 
                 var rekap = await _biayaService.GetRekapBiayaBulananAsync(bulan, tahun);
                 return Success(rekap, $"Berhasil mengambil rekap biaya bulanan untuk {bulan}/{tahun}.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("kategori/{kategori}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<BiayaListResponseDto>>), 200)]
+        public async Task<IActionResult> GetByKategori(int kategori)
+        {
+            try
+            {
+                if (!Enum.IsDefined(typeof(KategoriBiayaEnum), kategori))
+                {
+                    return Error("Kategori biaya tidak valid.", 400);
+                }
+
+                var kategoriBiaya = (KategoriBiayaEnum)kategori;
+                var biayas = await _biayaService.GetBiayaByKategoriAsync(kategoriBiaya);
+                var response = BiayaListResponseDto.FromEntities(biayas);
+                return Success(response, $"Berhasil mengambil biaya dengan kategori {kategoriBiaya}.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("kategori/{kategori}/periode")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<BiayaListResponseDto>>), 200)]
+        public async Task<IActionResult> GetByKategoriAndPeriode(int kategori, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        {
+            try
+            {
+                if (!Enum.IsDefined(typeof(KategoriBiayaEnum), kategori))
+                {
+                    return Error("Kategori biaya tidak valid.", 400);
+                }
+
+                if (startDate > endDate)
+                {
+                    return Error("Tanggal awal tidak boleh lebih besar dari tanggal akhir.", 400);
+                }
+
+                var kategoriBiaya = (KategoriBiayaEnum)kategori;
+                var biayas = await _biayaService.GetBiayaByKategoriAndPeriodAsync(kategoriBiaya, startDate, endDate);
+                var response = BiayaListResponseDto.FromEntities(biayas);
+                return Success(response, $"Berhasil mengambil biaya kategori {kategoriBiaya} periode {startDate:dd/MM/yyyy} - {endDate:dd/MM/yyyy}.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("kategori/{kategori}/total")]
+        [ProducesResponseType(typeof(Common.ApiResponse<decimal>), 200)]
+        public async Task<IActionResult> GetTotalByKategoriAndPeriode(int kategori, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        {
+            try
+            {
+                if (!Enum.IsDefined(typeof(KategoriBiayaEnum), kategori))
+                {
+                    return Error("Kategori biaya tidak valid.", 400);
+                }
+
+                if (startDate > endDate)
+                {
+                    return Error("Tanggal awal tidak boleh lebih besar dari tanggal akhir.", 400);
+                }
+
+                var kategoriBiaya = (KategoriBiayaEnum)kategori;
+                var total = await _biayaService.GetTotalBiayaByKategoriAndPeriodAsync(kategoriBiaya, startDate, endDate);
+                return Success(total, $"Berhasil mengambil total biaya kategori {kategoriBiaya} periode {startDate:dd/MM/yyyy} - {endDate:dd/MM/yyyy}.");
             }
             catch (Exception ex)
             {

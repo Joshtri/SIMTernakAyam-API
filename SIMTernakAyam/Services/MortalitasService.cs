@@ -211,7 +211,7 @@ namespace SIMTernakAyam.Services
         public new async Task<(bool Success, string Message)> UpdateAsync(Mortalitas entity, IFormFile? fotoMortalitas = null)
         {
             // Get existing entity
-            var existingEntity = await _mortalitasRepository.GetByIdAsync(entity.Id);
+            var existingEntity = await _mortalitasRepository.GetByIdNoTrackingAsync(entity.Id);
             if (existingEntity == null)
             {
                 return (false, "Data mortalitas tidak ditemukan.");

@@ -8,8 +8,8 @@ namespace SIMTernakAyam.DTOs.User
     /// </summary>
     public class UpdateUserDto
     {
-        [Required(ErrorMessage = "ID wajib diisi.")]
-        public Guid Id { get; set; }
+        // ID dihapus dari DTO karena sudah ada di route parameter
+        public Guid Id { get; set; } // Internal use only, akan di-set dari controller
 
         [Required(ErrorMessage = "Username wajib diisi.")]
         [StringLength(50, ErrorMessage = "Username maksimal 50 karakter.")]

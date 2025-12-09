@@ -15,12 +15,14 @@ namespace SIMTernakAyam.Repository
         public async Task<User?> GetByUsernameAsync(string username)
         {
             return await _database
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
         }
 
         public async Task<User?> GetByEmailAsync(string email)
         {
             return await _database
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
         }
 
@@ -39,6 +41,7 @@ namespace SIMTernakAyam.Repository
         public async Task<IEnumerable<User>> GetUsersByRoleAsync(RoleEnum role)
         {
             return await _database
+                .AsNoTracking()
                 .Where(u => u.Role == role)
                 .ToListAsync();
         }
@@ -46,6 +49,7 @@ namespace SIMTernakAyam.Repository
         public async Task<User?> GetUserWithKandangsAsync(Guid userId)
         {
             return await _database
+                .AsNoTracking()
                 .Include(u => u.Kandangs)
                 .FirstOrDefaultAsync(u => u.Id == userId);
         }

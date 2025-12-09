@@ -3,6 +3,7 @@ using SIMTernakAyam.Models;
 using SIMTernakAyam.Repositories.Interfaces;
 using SIMTernakAyam.Repository.Interfaces;
 using SIMTernakAyam.Services.Interfaces;
+using SIMTernakAyam.Enums;
 
 namespace SIMTernakAyam.Services
 {
@@ -81,6 +82,38 @@ namespace SIMTernakAyam.Services
             {
                 entity.Tanggal = entity.Tanggal.ToUniversalTime();
             }
+
+            // Auto set Bulan/Tahun jika belum diisi, prioritaskan Tanggal lalu CreatedAt
+            if (!entity.Bulan.HasValue || !entity.Tahun.HasValue)
+            {
+                var sourceDate = entity.Tanggal != default ? entity.Tanggal : entity.CreatedAt;
+                if (sourceDate != default)
+                {
+                    entity.Bulan = sourceDate.Month;
+                    entity.Tahun = sourceDate.Year;
+                }
+            }
+            await Task.CompletedTask;
+        }
+
+        protected override async Task BeforeUpdateAsync(Biaya entity, Biaya existingEntity)
+        {
+            // Ensure Tanggal is UTC
+            if (entity.Tanggal.Kind != DateTimeKind.Utc)
+            {
+                entity.Tanggal = entity.Tanggal.ToUniversalTime();
+            }
+
+            // Auto set Bulan/Tahun jika belum diisi, prioritaskan Tanggal lalu CreatedAt
+            if (!entity.Bulan.HasValue || !entity.Tahun.HasValue)
+            {
+                var sourceDate = entity.Tanggal != default ? entity.Tanggal : entity.CreatedAt;
+                if (sourceDate != default)
+                {
+                    entity.Bulan = sourceDate.Month;
+                    entity.Tahun = sourceDate.Year;
+                }
+            }
             await Task.CompletedTask;
         }
 
@@ -121,7 +154,7 @@ namespace SIMTernakAyam.Services
                     TotalBiayaListrik = biayaList.Where(b => b.JenisBiaya.ToLower() == "listrik").Sum(b => b.Jumlah),
                     TotalBiayaAir = biayaList.Where(b => b.JenisBiaya.ToLower() == "air").Sum(b => b.Jumlah),
                     TotalBiayaLainnya = biayaList.Where(b => b.JenisBiaya.ToLower() != "listrik" && b.JenisBiaya.ToLower() != "air").Sum(b => b.Jumlah),
-                    DetailBiaya = BiayaResponseDto.FromEntities(biayaList)
+                    DetailBiaya = BiayaListResponseDto.FromEntities(biayaList)
                 };
 
                 biayaBulanan.TotalBiaya = biayaBulanan.TotalBiayaListrik + biayaBulanan.TotalBiayaAir + biayaBulanan.TotalBiayaLainnya;
@@ -136,6 +169,26 @@ namespace SIMTernakAyam.Services
             rekap.GrandTotal = rekap.GrandTotalBiayaListrik + rekap.GrandTotalBiayaAir + rekap.GrandTotalBiayaLainnya;
 
             return rekap;
+        }
+
+        public async Task<Biaya?> GetSingleByOperasionalIdAsync(Guid operasionalId)
+        {
+            return await _biayaRepository.GetSingleByOperasionalIdAsync(operasionalId);
+        }
+
+        public async Task<IEnumerable<Biaya>> GetBiayaByKategoriAsync(KategoriBiayaEnum kategori)
+        {
+            return await _biayaRepository.GetByKategoriBiayaAsync(kategori);
+        }
+
+        public async Task<IEnumerable<Biaya>> GetBiayaByKategoriAndPeriodAsync(KategoriBiayaEnum kategori, DateTime startDate, DateTime endDate)
+        {
+            return await _biayaRepository.GetByKategoriBiayaAndDateRangeAsync(kategori, startDate, endDate);
+        }
+
+        public async Task<decimal> GetTotalBiayaByKategoriAndPeriodAsync(KategoriBiayaEnum kategori, DateTime startDate, DateTime endDate)
+        {
+            return await _biayaRepository.GetTotalBiayaByKategoriBiayaAndDateRangeAsync(kategori, startDate, endDate);
         }
     }
 }

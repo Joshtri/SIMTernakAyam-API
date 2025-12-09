@@ -2,7 +2,7 @@ using SIMTernakAyam.Enums;
 
 namespace SIMTernakAyam.DTOs.Biaya
 {
-    public class BiayaResponseDto
+    public class BiayaListResponseDto
     {
         public Guid Id { get; set; }
         public string JenisBiaya { get; set; } = string.Empty; // This is the actual name/label
@@ -14,16 +14,15 @@ namespace SIMTernakAyam.DTOs.Biaya
         public Guid? OperasionalId { get; set; }
         public Guid? KandangId { get; set; }
         public string? KandangNama { get; set; }
-        public string? BuktiBase64 { get; set; }
         public string? Catatan { get; set; }
         public int? Bulan { get; set; }
         public int? Tahun { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
-        public static BiayaResponseDto FromEntity(Models.Biaya biaya)
+        public static BiayaListResponseDto FromEntity(Models.Biaya biaya)
         {
-            return new BiayaResponseDto
+            return new BiayaListResponseDto
             {
                 Id = biaya.Id,
                 JenisBiaya = biaya.JenisBiaya, // e.g., "Pakan BR-1", "Vaksin ND", "Listrik", etc.
@@ -35,7 +34,6 @@ namespace SIMTernakAyam.DTOs.Biaya
                 OperasionalId = biaya.OperasionalId,
                 KandangId = biaya.KandangId,
                 KandangNama = biaya.Kandang?.NamaKandang,
-                BuktiBase64 = biaya.BuktiBase64,
                 Catatan = biaya.Catatan,
                 Bulan = biaya.Bulan,
                 Tahun = biaya.Tahun,
@@ -44,7 +42,7 @@ namespace SIMTernakAyam.DTOs.Biaya
             };
         }
 
-        public static List<BiayaResponseDto> FromEntities(IEnumerable<Models.Biaya> biayas)
+        public static List<BiayaListResponseDto> FromEntities(IEnumerable<Models.Biaya> biayas)
         {
             return biayas.Select(FromEntity).ToList();
         }

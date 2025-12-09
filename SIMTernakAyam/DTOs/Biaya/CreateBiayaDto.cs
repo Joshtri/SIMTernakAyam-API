@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SIMTernakAyam.Enums;
 
 namespace SIMTernakAyam.DTOs.Biaya
 {
@@ -7,6 +8,12 @@ namespace SIMTernakAyam.DTOs.Biaya
         [Required(ErrorMessage = "Jenis biaya wajib diisi.")]
         [StringLength(100, ErrorMessage = "Jenis biaya maksimal 100 karakter.")]
         public string JenisBiaya { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Kategori biaya: Pengeluaran Operasional atau Pembelian
+        /// Default: PengeluaranOperasional
+        /// </summary>
+        public KategoriBiayaEnum KategoriBiaya { get; set; } = KategoriBiayaEnum.PengeluaranOperasional;
 
         [Required(ErrorMessage = "Tanggal wajib diisi.")]
         public DateTime Tanggal { get; set; }
@@ -25,8 +32,8 @@ namespace SIMTernakAyam.DTOs.Biaya
         /// </summary>
         public Guid? KandangId { get; set; }
 
-        [StringLength(500, ErrorMessage = "URL bukti maksimal 500 karakter.")]
-        public string? BuktiUrl { get; set; }
+        // Base64 bukti (replaces URL)
+        public string? BuktiBase64 { get; set; }
 
         [StringLength(1000, ErrorMessage = "Catatan maksimal 1000 karakter.")]
         public string? Catatan { get; set; }

@@ -108,6 +108,7 @@ namespace SIMTernakAyam.Services
                 // Hook untuk custom logic sebelum update
                 await BeforeUpdateAsync(entity, existingEntity);
 
+                // Gunakan Update method yang tidak menambah tracking baru
                 _repository.UpdateAsync(entity);
                 await _repository.SaveChangesAsync();
 

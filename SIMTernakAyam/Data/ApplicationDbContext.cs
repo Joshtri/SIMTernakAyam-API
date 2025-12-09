@@ -228,6 +228,138 @@ namespace SIMTernakAyam.Data
             modelBuilder.Entity<JurnalHarian>()
                 .Property(j => j.FotoKegiatan)
                 .HasMaxLength(500);
+
+            // ------------------------------------------------------------
+            // Seed data for demo (petugas, kandang, jenis kegiatan, operasional & biaya)
+            // ------------------------------------------------------------
+            /*
+            var seedPetugasId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+            var seedKandangId = Guid.Parse("66666666-7777-8888-9999-000000000000");
+            var seedJenisDesinfektanId = Guid.Parse("294429b6-3320-4d58-8847-99dd1a205e49");
+            var seedJenisSekamId = Guid.Parse("85b39a24-917e-406c-ba97-c45c3ed63f65");
+
+            var seedOperasionalDesinfektanId = Guid.Parse("aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb");
+            var seedOperasionalSekamId = Guid.Parse("aaaaaaaa-1111-2222-3333-cccccccccccc");
+
+            var seedBiayaDesinfektanId = Guid.Parse("dddddddd-1111-2222-3333-eeeeeeeeeeee");
+            var seedBiayaSekamId = Guid.Parse("dddddddd-1111-2222-3333-fffffffffffe");
+
+            // User (Petugas)
+            modelBuilder.Entity<User>().HasData(new User
+            {
+                Id = seedPetugasId,
+                Username = "petugas1",
+                Password = "hashed_password",
+                FullName = "Petugas Demo",
+                Role = Enums.RoleEnum.Petugas,
+                Email = "petugas1@example.com",
+                NoWA = "081234567890",
+                CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 1), DateTimeKind.Utc),
+                UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 1), DateTimeKind.Utc)
+            });
+
+            // Kandang
+            modelBuilder.Entity<Kandang>().HasData(new Kandang
+            {
+                Id = seedKandangId,
+                NamaKandang = "Kandang A",
+                Kapasitas = 2000,
+                Lokasi = "Blok A",
+                petugasId = seedPetugasId,
+                CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 1), DateTimeKind.Utc),
+                UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 1), DateTimeKind.Utc)
+            });
+
+            // Jenis Kegiatan
+            modelBuilder.Entity<JenisKegiatan>().HasData(
+                new JenisKegiatan
+                {
+                    Id = seedJenisDesinfektanId,
+                    NamaKegiatan = "Pembelian desinfektan",
+                    Deskripsi = "10 liter x Rp 100.000 = Rp 1.000.000",
+                    BiayaDefault = 100000m,
+                    CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 6), DateTimeKind.Utc),
+                    UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 6, 12, 59, 36), DateTimeKind.Utc)
+                },
+                new JenisKegiatan
+                {
+                    Id = seedJenisSekamId,
+                    NamaKegiatan = "Pembelian sekam padi",
+                    Deskripsi = "30 karung x Rp 50.000 = Rp 1.500.000",
+                    BiayaDefault = 50000m,
+                    CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 6), DateTimeKind.Utc),
+                    UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 6, 12, 59, 50), DateTimeKind.Utc)
+                }
+            );
+
+            // Operasional (tanpa pakan/vaksin, hanya pengeluaran umum)
+            modelBuilder.Entity<Operasional>().HasData(
+                new Operasional
+                {
+                    Id = seedOperasionalDesinfektanId,
+                    JenisKegiatanId = seedJenisDesinfektanId,
+                    Tanggal = DateTime.SpecifyKind(new DateTime(2025, 12, 9, 0, 0, 0), DateTimeKind.Utc),
+                    Jumlah = 10, // 10 liter
+                    PetugasId = seedPetugasId,
+                    KandangId = seedKandangId,
+                    PakanId = null,
+                    VaksinId = null,
+                    CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc),
+                    UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc)
+                },
+                new Operasional
+                {
+                    Id = seedOperasionalSekamId,
+                    JenisKegiatanId = seedJenisSekamId,
+                    Tanggal = DateTime.SpecifyKind(new DateTime(2025, 12, 9, 0, 0, 0), DateTimeKind.Utc),
+                    Jumlah = 30, // 30 karung
+                    PetugasId = seedPetugasId,
+                    KandangId = seedKandangId,
+                    PakanId = null,
+                    VaksinId = null,
+                    CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc),
+                    UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc)
+                }
+            );
+
+            // Biaya terhubung ke Operasional
+            modelBuilder.Entity<Biaya>().HasData(
+                new Biaya
+                {
+                    Id = seedBiayaDesinfektanId,
+                    JenisBiaya = "Pembelian desinfektan",
+                    KategoriBiaya = Enums.KategoriBiayaEnum.Pembelian,
+                    Tanggal = DateTime.SpecifyKind(new DateTime(2025, 12, 9, 0, 0, 0), DateTimeKind.Utc),
+                    Jumlah = 1000000m,
+                    PetugasId = seedPetugasId,
+                    OperasionalId = seedOperasionalDesinfektanId,
+                    KandangId = seedKandangId,
+                    BuktiBase64 = null,
+                    Catatan = "10 liter x Rp 100.000 = Rp 1.000.000",
+                    Bulan = 12,
+                    Tahun = 2025,
+                    CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc),
+                    UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc)
+                },
+                new Biaya
+                {
+                    Id = seedBiayaSekamId,
+                    JenisBiaya = "Pembelian sekam padi",
+                    KategoriBiaya = Enums.KategoriBiayaEnum.Pembelian,
+                    Tanggal = DateTime.SpecifyKind(new DateTime(2025, 12, 9, 0, 0, 0), DateTimeKind.Utc),
+                    Jumlah = 1500000m,
+                    PetugasId = seedPetugasId,
+                    OperasionalId = seedOperasionalSekamId,
+                    KandangId = seedKandangId,
+                    BuktiBase64 = null,
+                    Catatan = "30 karung x Rp 50.000 = Rp 1.500.000",
+                    Bulan = 12,
+                    Tahun = 2025,
+                    CreatedAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc),
+                    UpdateAt = DateTime.SpecifyKind(new DateTime(2025, 12, 9), DateTimeKind.Utc)
+                }
+            );
+            */
         }
 
 

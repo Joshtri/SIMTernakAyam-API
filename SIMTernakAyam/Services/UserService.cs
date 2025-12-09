@@ -247,24 +247,84 @@ namespace SIMTernakAyam.Services
         /// </summary>
         protected override Task BeforeUpdateAsync(User entity, User existingEntity)
         {
-            // Update data
-            existingEntity.Username = entity.Username;
-            existingEntity.Email = entity.Email;
-            existingEntity.FullName = entity.FullName;
-            existingEntity.NoWA = entity.NoWA;
-            existingEntity.Role = entity.Role;
+            // Update data pada entity yang akan di-save
+            entity.Username = entity.Username;
+            entity.Email = entity.Email;
+            entity.FullName = entity.FullName;
+            entity.NoWA = entity.NoWA;
+            entity.Role = entity.Role;
+            entity.CreatedAt = existingEntity.CreatedAt; // Preserve created date
 
-            // Jika password diubah, hash password baru
+            // Jika password diubah (tidak kosong dan berbeda dari existing), hash password baru
             if (!string.IsNullOrEmpty(entity.Password) && entity.Password != existingEntity.Password)
             {
-                existingEntity.Password = HashPassword(entity.Password);
+                entity.Password = HashPassword(entity.Password);
+            }
+            else
+            {
+                // Jika password tidak diubah, gunakan password lama
+                entity.Password = existingEntity.Password;
             }
 
-            // Update entity reference untuk disimpan
-            entity.Password = existingEntity.Password;
-            entity.CreatedAt = existingEntity.CreatedAt;
-
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Override UpdateAsync khusus untuk User dengan handling tracking yang lebih baik
+        /// </summary>
+        public override async Task<(bool Success, string Message)> UpdateAsync(User entity)
+        {
+            try
+            {
+                // Gunakan AsNoTracking untuk menghindari conflict
+                var existingEntity = await _userRepository.GetByIdNoTrackingAsync(entity.Id);
+                if (existingEntity == null)
+                {
+                    return (false, "User tidak ditemukan.");
+                }
+
+                // Validasi username tidak digunakan user lain
+                var userWithSameUsername = await _userRepository.GetByUsernameAsync(entity.Username);
+                if (userWithSameUsername != null && userWithSameUsername.Id != entity.Id)
+                {
+                    return (false, "Username sudah digunakan oleh user lain.");
+                }
+
+                // Validasi email tidak digunakan user lain  
+                var userWithSameEmail = await _userRepository.GetByEmailAsync(entity.Email);
+                if (userWithSameEmail != null && userWithSameEmail.Id != entity.Id)
+                {
+                    return (false, "Email sudah digunakan oleh user lain.");
+                }
+
+                // Preserve data yang tidak boleh diubah
+                entity.CreatedAt = existingEntity.CreatedAt;
+                entity.UpdateAt = DateTime.UtcNow;
+
+                // Handle password - jika kosong atau null, gunakan password lama
+                if (string.IsNullOrEmpty(entity.Password))
+                {
+                    entity.Password = existingEntity.Password;
+                }
+                else if (entity.Password != existingEntity.Password)
+                {
+                    // Hash password baru jika berbeda
+                    entity.Password = HashPassword(entity.Password);
+                }
+
+                // Update tanpa tracking conflict
+                _userRepository.UpdateAsync(entity);
+                await _userRepository.SaveChangesAsync();
+
+                return (true, "User berhasil diupdate.");
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = ex.InnerException != null
+                    ? $"Terjadi kesalahan: {ex.Message}. Detail: {ex.InnerException.Message}"
+                    : $"Terjadi kesalahan: {ex.Message}";
+                return (false, errorMessage);
+            }
         }
 
         #endregion

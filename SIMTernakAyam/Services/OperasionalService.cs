@@ -143,12 +143,6 @@ namespace SIMTernakAyam.Services
                 }
             }
 
-            // If both PakanId and VaksinId are null but Jumlah > 0, provide warning
-            if (!entity.PakanId.HasValue && !entity.VaksinId.HasValue)
-            {
-                return new ValidationResult { IsValid = false, ErrorMessage = "Harus memilih pakan atau vaksin untuk operasional." };
-            }
-
             return new ValidationResult { IsValid = true };
         }
 
@@ -235,12 +229,6 @@ namespace SIMTernakAyam.Services
                 }
             }
 
-            // If both PakanId and VaksinId are null but Jumlah > 0, provide warning
-            if (!entity.PakanId.HasValue && !entity.VaksinId.HasValue)
-            {
-                return new ValidationResult { IsValid = false, ErrorMessage = "Harus memilih pakan atau vaksin untuk operasional." };
-            }
-
             return new ValidationResult { IsValid = true };
         }
 
@@ -266,7 +254,10 @@ namespace SIMTernakAyam.Services
             {
                 await _stokService.KurangiStokVaksin(entity.VaksinId.Value, entity.Tanggal, entity.Jumlah);
             }
-            
+
+            // Auto-create biaya entry for this operasional (using JenisKegiatan.BiayaDefault)
+            await UpsertBiayaForOperasional(entity);
+
             await Task.CompletedTask;
         }
 
@@ -332,6 +323,9 @@ namespace SIMTernakAyam.Services
                 }
             }
             
+            // Sync biaya for this operasional after stock adjustments
+            await UpsertBiayaForOperasional(entity);
+
             await Task.CompletedTask;
         }
 
@@ -347,8 +341,58 @@ namespace SIMTernakAyam.Services
             {
                 await _stokService.TambahStokVaksin(entity.VaksinId.Value, entity.Tanggal, entity.Jumlah);
             }
-            
+
+            // Remove linked biaya (if exists) when operasional is deleted
+            var existingBiaya = await _biayaService.GetSingleByOperasionalIdAsync(entity.Id);
+            if (existingBiaya != null)
+            {
+                await _biayaService.DeleteAsync(existingBiaya.Id);
+            }
+
             await Task.CompletedTask;
+        }
+
+        private async Task UpsertBiayaForOperasional(Operasional entity)
+        {
+            // Fetch jenis kegiatan without tracking to avoid double tracking
+            var jenisKegiatan = await _jenisKegiatanRepository.GetByIdNoTrackingAsync(entity.JenisKegiatanId);
+            var biayaPerUnit = jenisKegiatan?.BiayaDefault ?? 0m;
+            var totalBiaya = biayaPerUnit * entity.Jumlah;
+
+            // If no cost is defined, still create record with 0 to keep list complete
+            var existingBiaya = await _biayaService.GetSingleByOperasionalIdAsync(entity.Id);
+
+            if (existingBiaya == null)
+            {
+                var biaya = new Biaya
+                {
+                    JenisBiaya = jenisKegiatan?.NamaKegiatan ?? "Operasional",
+                    Tanggal = entity.Tanggal,
+                    Jumlah = totalBiaya,
+                    PetugasId = entity.PetugasId,
+                    OperasionalId = entity.Id,
+                    KandangId = entity.KandangId,
+                    Bulan = entity.Tanggal.Month,
+                    Tahun = entity.Tanggal.Year,
+                    Catatan = jenisKegiatan?.Deskripsi
+                };
+
+                await _biayaService.CreateAsync(biaya);
+            }
+            else
+            {
+                existingBiaya.JenisBiaya = jenisKegiatan?.NamaKegiatan ?? existingBiaya.JenisBiaya;
+                existingBiaya.Tanggal = entity.Tanggal;
+                existingBiaya.Jumlah = totalBiaya;
+                existingBiaya.PetugasId = entity.PetugasId;
+                existingBiaya.OperasionalId = entity.Id;
+                existingBiaya.KandangId = entity.KandangId;
+                existingBiaya.Bulan = entity.Tanggal.Month;
+                existingBiaya.Tahun = entity.Tanggal.Year;
+                existingBiaya.Catatan = jenisKegiatan?.Deskripsi;
+
+                await _biayaService.UpdateAsync(existingBiaya);
+            }
         }
     }
 }

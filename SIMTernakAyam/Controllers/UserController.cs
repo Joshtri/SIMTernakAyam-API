@@ -194,16 +194,13 @@ namespace SIMTernakAyam.Controllers
                     return ValidationError(ModelState);
                 }
 
-                // Validasi ID dari route harus sama dengan ID di body
-                if (id != dto.Id)
-                {
-                    return Error("ID di URL tidak sesuai dengan ID di body.", 400);
-                }
+                // Set ID dari route parameter ke DTO
+                dto.Id = id;
 
                 // Map DTO ke Entity
                 var user = new Models.User
                 {
-                    Id = dto.Id,
+                    Id = id, // Gunakan ID dari route
                     Username = dto.Username,
                     FullName = dto.FullName,
                     Email = dto.Email,
@@ -224,7 +221,7 @@ namespace SIMTernakAyam.Controllers
                     return Error(result.Message, 400);
                 }
 
-                return Success(result.Message,200);
+                return Success(result.Message, 200);
             }
             catch (Exception ex)
             {

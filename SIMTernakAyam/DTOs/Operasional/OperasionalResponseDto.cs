@@ -15,11 +15,13 @@ namespace SIMTernakAyam.DTOs.Operasional
         public string? PakanNama { get; set; }
         public Guid? VaksinId { get; set; }
         public string? VaksinNama { get; set; }
+        public decimal? TotalBiaya { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
         public static OperasionalResponseDto FromEntity(Models.Operasional operasional)
         {
+            var biayaPerUnit = operasional.JenisKegiatan?.BiayaDefault ?? 0m;
             return new OperasionalResponseDto
             {
                 Id = operasional.Id,
@@ -27,6 +29,7 @@ namespace SIMTernakAyam.DTOs.Operasional
                 JenisKegiatanNama = operasional.JenisKegiatan?.NamaKegiatan,
                 Tanggal = operasional.Tanggal,
                 Jumlah = operasional.Jumlah,
+                TotalBiaya = biayaPerUnit * operasional.Jumlah,
                 PetugasId = operasional.PetugasId,
                 PetugasNama = operasional.Petugas?.FullName ?? operasional.Petugas?.Username,
                 KandangId = operasional.KandangId,

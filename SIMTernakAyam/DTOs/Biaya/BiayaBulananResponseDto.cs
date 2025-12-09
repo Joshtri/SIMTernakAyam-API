@@ -13,7 +13,7 @@ namespace SIMTernakAyam.DTOs.Biaya
         public decimal TotalBiayaAir { get; set; }
         public decimal TotalBiayaLainnya { get; set; }
         public decimal TotalBiaya { get; set; }
-        public List<BiayaResponseDto> DetailBiaya { get; set; } = new List<BiayaResponseDto>();
+        public List<BiayaListResponseDto> DetailBiaya { get; set; } = new List<BiayaListResponseDto>();
     }
 
     /// <summary>
