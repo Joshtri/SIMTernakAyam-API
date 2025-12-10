@@ -9,10 +9,335 @@ namespace SIMTernakAyam.Controllers
     public class OperasionalController : BaseController
     {
         private readonly IOperasionalService _operasionalService;
+        private readonly IVaksinService _vaksinService;
+        private readonly IPakanService _pakanService;
+        private readonly IJenisKegiatanService _jenisKegiatanService;
 
-        public OperasionalController(IOperasionalService operasionalService)
+        public OperasionalController(
+            IOperasionalService operasionalService,
+            IVaksinService vaksinService,
+            IPakanService pakanService,
+            IJenisKegiatanService jenisKegiatanService)
         {
             _operasionalService = operasionalService;
+            _vaksinService = vaksinService;
+            _pakanService = pakanService;
+            _jenisKegiatanService = jenisKegiatanService;
+        }
+
+        [HttpGet("form-data")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        public async Task<IActionResult> GetFormData()
+        {
+            try
+            {
+                var jenisKegiatans = await _jenisKegiatanService.GetAllAsync();
+                var vaksins = await _vaksinService.GetAllVaksinWithUsageDetailAsync();
+                var pakans = await _pakanService.GetAllPakanWithUsageDetailAsync();
+
+                var formData = new
+                {
+                    JenisKegiatan = jenisKegiatans.Select(jk => new
+                    {
+                        Id = jk.Id,
+                        Nama = jk.NamaKegiatan,
+                        Deskripsi = jk.Deskripsi,
+                        BiayaDefault = jk.BiayaDefault,
+                        // Tambahan info untuk frontend
+                        MembutuhkanVaksin = jk.NamaKegiatan?.Contains("Vaksin") ?? false,
+                        MembutuhkanPakan = jk.NamaKegiatan?.Contains("Pakan") ?? false
+                    }),
+                    Vaksins = vaksins.Select(v => new
+                    {
+                        v.Id,
+                        v.NamaVaksin,
+                        v.StokTersisa,
+                        v.StatusStok,
+                        v.IsStokCukup,
+                        v.Tipe,
+                        Info = $"{v.NamaVaksin} - Sisa: {v.StokTersisa} dosis ({v.StatusStok})"
+                    }),
+                    Pakans = pakans.Select(p => new
+                    {
+                        p.Id,
+                        p.NamaPakan,
+                        p.StokTersisaKg,
+                        p.StatusStok,
+                        p.IsStokCukup,
+                        Info = $"{p.NamaPakan} - Sisa: {p.StokTersisaKg:F1} kg ({p.StatusStok})"
+                    })
+                };
+
+                return Success(formData, "Berhasil mengambil data untuk form operasional.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPost("create-with-validation")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 201)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        public async Task<IActionResult> CreateWithValidation([FromBody] CreateOperasionalWithValidationDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return ValidationError(ModelState);
+                }
+
+                // Step 1: Validasi stok terlebih dahulu jika menggunakan pakan/vaksin
+                var validationResults = new List<object>();
+                var errors = new List<string>();
+
+                if (dto.VaksinId.HasValue && dto.VaksinId != Guid.Empty)
+                {
+                    var vaksinAvailability = await _vaksinService.CheckStockAvailabilityAsync(dto.VaksinId.Value, dto.Jumlah);
+                    if (vaksinAvailability != null)
+                    {
+                        var availability = vaksinAvailability as dynamic;
+                        if (availability != null && !(bool)availability.IsAvailable)
+                        {
+                            errors.Add($"Stok vaksin tidak mencukupi. {availability.Rekomendasi}");
+                        }
+                        else
+                        {
+                            validationResults.Add(new { Type = "Vaksin", Data = vaksinAvailability });
+                        }
+                    }
+                }
+
+                if (dto.PakanId.HasValue && dto.PakanId != Guid.Empty)
+                {
+                    var pakanAvailability = await _pakanService.CheckStockAvailabilityAsync(dto.PakanId.Value, dto.Jumlah);
+                    if (pakanAvailability != null)
+                    {
+                        var availability = pakanAvailability as dynamic;
+                        if (availability != null && !(bool)availability.IsAvailable)
+                        {
+                            errors.Add($"Stok pakan tidak mencukupi. {availability.Rekomendasi}");
+                        }
+                        else
+                        {
+                            validationResults.Add(new { Type = "Pakan", Data = pakanAvailability });
+                        }
+                    }
+                }
+
+                // Jika ada error validasi stok, return error
+                if (errors.Any())
+                {
+                    return Error(string.Join(" ", errors), 400);
+                }
+
+                // Step 2: Create operasional entity
+                var operasional = new Models.Operasional
+                {
+                    JenisKegiatanId = dto.JenisKegiatanId,
+                    Tanggal = dto.Tanggal,
+                    Jumlah = dto.Jumlah,
+                    PetugasId = dto.PetugasId,
+                    KandangId = dto.KandangId,
+                    PakanId = dto.PakanId,
+                    VaksinId = dto.VaksinId
+                };
+
+                // Step 3: Create operasional
+                var result = await _operasionalService.CreateAsync(operasional);
+
+                if (!result.Success)
+                {
+                    return Error(result.Message, 400);
+                }
+
+                // Step 4: Return success with details
+                var response = new
+                {
+                    Operasional = OperasionalResponseDto.FromEntity(result.Data!),
+                    StockValidation = validationResults,
+                    Message = result.Message
+                };
+
+                return Created(response, "Operasional berhasil dibuat dengan validasi stok.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPut("{id}/update-with-validation")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> UpdateWithValidation(Guid id, [FromBody] UpdateOperasionalWithValidationDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return ValidationError(ModelState);
+                }
+
+                // Step 1: Cek apakah operasional exists
+                var existingOperasional = await _operasionalService.GetByIdAsync(id);
+                if (existingOperasional == null)
+                {
+                    return NotFound("Data operasional tidak ditemukan.");
+                }
+
+                // Step 2: Validasi stok jika ada perubahan pakan/vaksin
+                var validationResults = new List<object>();
+                var errors = new List<string>();
+
+                if (dto.VaksinId.HasValue && dto.VaksinId != Guid.Empty)
+                {
+                    var vaksinAvailability = await _vaksinService.CheckStockAvailabilityAsync(dto.VaksinId.Value, dto.Jumlah);
+                    if (vaksinAvailability != null)
+                    {
+                        var availability = vaksinAvailability as dynamic;
+                        if (availability != null && !(bool)availability.IsAvailable)
+                        {
+                            errors.Add($"Stok vaksin tidak mencukupi. {availability.Rekomendasi}");
+                        }
+                        else
+                        {
+                            validationResults.Add(new { Type = "Vaksin", Data = vaksinAvailability });
+                        }
+                    }
+                }
+
+                if (dto.PakanId.HasValue && dto.PakanId != Guid.Empty)
+                {
+                    var pakanAvailability = await _pakanService.CheckStockAvailabilityAsync(dto.PakanId.Value, dto.Jumlah);
+                    if (pakanAvailability != null)
+                    {
+                        var availability = pakanAvailability as dynamic;
+                        if (availability != null && !(bool)availability.IsAvailable)
+                        {
+                            errors.Add($"Stok pakan tidak mencukupi. {availability.Rekomendasi}");
+                        }
+                        else
+                        {
+                            validationResults.Add(new { Type = "Pakan", Data = pakanAvailability });
+                        }
+                    }
+                }
+
+                // Jika ada error validasi stok, return error
+                if (errors.Any())
+                {
+                    return Error(string.Join(" ", errors), 400);
+                }
+
+                // Step 3: Update operasional
+                var operasional = new Models.Operasional
+                {
+                    Id = id, // Gunakan ID dari URL
+                    JenisKegiatanId = dto.JenisKegiatanId,
+                    Tanggal = dto.Tanggal,
+                    Jumlah = dto.Jumlah,
+                    PetugasId = dto.PetugasId,
+                    KandangId = dto.KandangId,
+                    PakanId = dto.PakanId,
+                    VaksinId = dto.VaksinId
+                };
+
+                var result = await _operasionalService.UpdateAsync(operasional);
+
+                if (!result.Success)
+                {
+                    return Error(result.Message, 400);
+                }
+
+                // Step 4: Return success with details
+                var response = new
+                {
+                    Message = result.Message,
+                    StockValidation = validationResults,
+                    UpdatedId = id
+                };
+
+                return Success(response, "Operasional berhasil diupdate dengan validasi stok.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPost("validate-stock")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        public async Task<IActionResult> ValidateStock([FromBody] ValidateOperasionalStockDto dto)
+        {
+            try
+            {
+                var warnings = new List<object>();
+                var errors = new List<string>();
+
+                // Validasi stok vaksin jika ada
+                if (dto.VaksinId.HasValue && dto.VaksinId != Guid.Empty && dto.Jumlah > 0)
+                {
+                    var vaksinAvailability = await _vaksinService.CheckStockAvailabilityAsync(dto.VaksinId.Value, dto.Jumlah);
+                    if (vaksinAvailability != null)
+                    {
+                        var availability = vaksinAvailability as dynamic;
+                        if (availability != null && !(bool)availability.IsAvailable)
+                        {
+                            errors.Add($"Stok vaksin tidak mencukupi. {availability.Rekomendasi}");
+                        }
+                        else
+                        {
+                            warnings.Add(new
+                            {
+                                Type = "Vaksin",
+                                Data = vaksinAvailability
+                            });
+                        }
+                    }
+                }
+
+                // Validasi stok pakan jika ada
+                if (dto.PakanId.HasValue && dto.PakanId != Guid.Empty && dto.Jumlah > 0)
+                {
+                    var pakanAvailability = await _pakanService.CheckStockAvailabilityAsync(dto.PakanId.Value, dto.Jumlah);
+                    if (pakanAvailability != null)
+                    {
+                        var availability = pakanAvailability as dynamic;
+                        if (availability != null && !(bool)availability.IsAvailable)
+                        {
+                            errors.Add($"Stok pakan tidak mencukupi. {availability.Rekomendasi}");
+                        }
+                        else
+                        {
+                            warnings.Add(new
+                            {
+                                Type = "Pakan",
+                                Data = pakanAvailability
+                            });
+                        }
+                    }
+                }
+
+                if (errors.Any())
+                {
+                    return Error(string.Join(" ", errors), 400);
+                }
+
+                return Success(new
+                {
+                    CanProceed = true,
+                    Warnings = warnings,
+                    Message = warnings.Any() ? "Validasi berhasil dengan peringatan." : "Stok mencukupi untuk operasional ini."
+                }, "Validasi stok berhasil.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
         }
 
         [HttpGet]
@@ -160,9 +485,17 @@ namespace SIMTernakAyam.Controllers
                     return ValidationError(ModelState);
                 }
 
+                // ? ID validation - consistent with other controllers
                 if (id != dto.Id)
                 {
                     return Error("ID di URL tidak sesuai dengan ID di body.", 400);
+                }
+
+                // Cek apakah operasional ada
+                var existingOperasional = await _operasionalService.GetByIdAsync(id);
+                if (existingOperasional == null)
+                {
+                    return NotFound("Data operasional tidak ditemukan.");
                 }
 
                 var operasional = new Models.Operasional
@@ -181,10 +514,6 @@ namespace SIMTernakAyam.Controllers
 
                 if (!result.Success)
                 {
-                    if (result.Message.Contains("tidak ditemukan"))
-                    {
-                        return NotFound(result.Message);
-                    }
                     return Error(result.Message, 400);
                 }
 
@@ -221,5 +550,37 @@ namespace SIMTernakAyam.Controllers
                 return HandleException(ex);
             }
         }
+    }
+
+    // DTO untuk validasi stok operasional
+    public class ValidateOperasionalStockDto
+    {
+        public Guid? VaksinId { get; set; }
+        public Guid? PakanId { get; set; }
+        public int Jumlah { get; set; }
+    }
+
+    // DTO untuk create operasional dengan validasi
+    public class CreateOperasionalWithValidationDto
+    {
+        public Guid JenisKegiatanId { get; set; }
+        public DateTime Tanggal { get; set; }
+        public int Jumlah { get; set; }
+        public Guid PetugasId { get; set; }
+        public Guid KandangId { get; set; }
+        public Guid? PakanId { get; set; }
+        public Guid? VaksinId { get; set; }
+    }
+
+    // DTO untuk update operasional dengan validasi (tidak perlu ID di body)
+    public class UpdateOperasionalWithValidationDto
+    {
+        public Guid JenisKegiatanId { get; set; }
+        public DateTime Tanggal { get; set; }
+        public int Jumlah { get; set; }
+        public Guid PetugasId { get; set; }
+        public Guid KandangId { get; set; }
+        public Guid? PakanId { get; set; }
+        public Guid? VaksinId { get; set; }
     }
 }

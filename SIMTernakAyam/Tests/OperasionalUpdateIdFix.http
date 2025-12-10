@@ -1,0 +1,170 @@
+### ? OPERASIONAL UPDATE - ID FIX TEST ###
+### This application requires ID in BOTH URL and request body
+### The error "ID di URL tidak sesuai dengan ID di body" occurs when they don't match
+
+@baseUrl = https://localhost:7195
+@contentType = application/json
+
+### ========================================================================================
+### ?? TEST 1: GET EXISTING OPERASIONAL TO UPDATE
+### ========================================================================================
+
+GET {{baseUrl}}/api/operasionals
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 2: UPDATE OPERASIONAL - CORRECT WAY (ID IN BOTH URL AND BODY)
+### ? IMPORTANT: ID must be the same in URL and body
+### Use an actual ID from the GET response above
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T10:00:00Z",
+  "jumlah": 15,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+### ========================================================================================
+### ?? TEST 3: UPDATE OPERASIONAL WITH VALIDATION
+### Use the new endpoint with built-in validation (no ID in body for this endpoint)
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea/update-with-validation
+Content-Type: {{contentType}}
+
+{
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T10:00:00Z",
+  "jumlah": 10,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? TEST 4: VERIFY UPDATE WORKED
+### Check that the update was successful
+### ========================================================================================
+
+GET {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 5: ERROR CASE - ID MISMATCH (should return 400 with the error message)
+### This will demonstrate the error you were experiencing
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T11:00:00Z",
+  "jumlah": 5,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? TEST 6: ERROR CASE - MISSING ID IN BODY (should return validation error)
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T12:00:00Z",
+  "jumlah": 1,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? EXPECTED RESULTS
+### ========================================================================================
+
+# ? TEST 2 & 3: Should return 200 OK with success message
+# {
+#   "success": true,
+#   "message": "Data berhasil diupdate.",
+#   "data": null,
+#   "errors": null,
+#   "statusCode": 200,
+#   "timestamp": "2024-12-10T..."
+# }
+
+# ? TEST 4: Should return updated operasional data
+# {
+#   "success": true,
+#   "message": "Berhasil mengambil data operasional.",
+#   "data": {
+#     "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+#     "jumlah": 15, // Updated value
+#     "vaksinNama": null,
+#     "pakanNama": "Pakan Finisher BR-2" // Updated if pakanId was provided
+#   }
+# }
+
+# ? TEST 5: Should return 400 Bad Request
+# {
+#   "success": false,
+#   "message": "ID di URL tidak sesuai dengan ID di body.",
+#   "statusCode": 400,
+#   "timestamp": "2024-12-10T..."
+# }
+
+# ? TEST 6: Should return 422 Validation Error
+# {
+#   "success": false,
+#   "message": "Validasi gagal",
+#   "errors": {
+#     "Id": ["ID wajib diisi."]
+#   },
+#   "statusCode": 422
+# }
+
+### ========================================================================================
+### ?? SOLUTION SUMMARY
+### ========================================================================================
+
+# ?? PROBLEM: "ID di URL tidak sesuai dengan ID di body"
+#
+# ?? CAUSE: 
+#    - This application uses a consistent pattern where update DTOs require an Id property
+#    - Controllers validate that URL ID matches body ID
+#    - This is the same pattern used in BiayaController and other controllers
+#
+# ? SOLUTION:
+#    1. UpdateOperasionalDto MUST have Id property (required)
+#    2. Controller MUST validate id parameter == dto.Id
+#    3. When updating, include the SAME ID in both URL and request body
+#
+# ?? CORRECT REQUEST FORMAT:
+# PUT /api/operasionals/{id}
+# {
+#   "id": "{same-id-as-url}",
+#   "jenisKegiatanId": "...",
+#   "tanggal": "...",
+#   "jumlah": 123,
+#   "petugasId": "...",
+#   "kandangId": "...",
+#   "pakanId": null,
+#   "vaksinId": null
+# }
+#
+# ?? ALTERNATIVE: Use update-with-validation endpoint which doesn't require ID in body

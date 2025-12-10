@@ -1,0 +1,72 @@
+### ?? PAKAN STOK TERPAKAI DIAGNOSTIC ###
+### Debug mengapa stokTerpakai menunjukkan 0 meskipun ada operasional yang menggunakan pakan
+
+@baseUrl = https://localhost:7195
+@contentType = application/json
+
+### ========================================================================================
+### ?? TEST 1: GET ALL PAKAN (untuk melihat ID yang akan di-debug)
+### ========================================================================================
+
+GET {{baseUrl}}/api/pakans/with-usage-detail
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 2: DIAGNOSTIC PAKAN STARTER (BR-1)
+### ID dari data yang Anda berikan: "e11e3582-be86-46f4-8a22-f04e1437979d"
+### ========================================================================================
+
+GET {{baseUrl}}/api/pakans/e11e3582-be86-46f4-8a22-f04e1437979d/diagnostic
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 3: DIAGNOSTIC PAKAN FINISHER (BR-2)
+### ID dari data yang Anda berikan: "128c96b6-7df0-4388-b20f-a56292fac2db"
+### ========================================================================================
+
+GET {{baseUrl}}/api/pakans/128c96b6-7df0-4388-b20f-a56292fac2db/diagnostic
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 4: GET ALL OPERASIONALS (untuk konfirmasi data)
+### ========================================================================================
+
+GET {{baseUrl}}/api/operasionals
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? EXPECTED DIAGNOSTIC RESULTS
+### ========================================================================================
+
+# Dari diagnostic endpoint, kita akan melihat:
+# 1. Pakan periode (bulan/tahun)
+# 2. Operasional yang menggunakan pakan tersebut
+# 3. Apakah periode operasional cocok dengan periode pakan
+# 4. Total stok terpakai di periode vs all time
+
+# KEMUNGKINAN MASALAH:
+# - Pakan periode: Oktober 2025 (10/2025)
+# - Operasional tanggal: 2025-10-21 (benar di Oktober 2025)
+# - Tapi query periode ada masalah
+
+# HASIL YANG DIHARAPKAN:
+# - AllOperasionalsUsingThisPakan: [ada data operasional]
+# - OperasionalsInSpecificPeriod: [seharusnya juga ada data yang sama]
+# - TotalStokTerpakaiAllTime: 233
+# - TotalStokTerpakaiInPeriod: 233 (seharusnya sama)
+
+### ========================================================================================
+### ?? POSSIBLE FIXES BASED ON RESULTS
+### ========================================================================================
+
+# JIKA TotalStokTerpakaiAllTime > 0 tapi TotalStokTerpakaiInPeriod = 0:
+# - Masalah pada query periode (startDate/endDate calculation)
+# - Fix: Update GetTotalStokTerpakai method
+
+# JIKA AllOperasionalsUsingThisPakan kosong:
+# - PakanId tidak tersimpan dengan benar di operasional
+# - Fix: Pastikan operasional create/update menyimpan pakanId
+
+# JIKA OperasionalsInSpecificPeriod kosong tapi AllOperasionalsUsingThisPakan ada:
+# - Periode query salah (bulan/tahun di pakan vs tanggal di operasional)
+# - Fix: Adjust periode calculation atau update pakan periode

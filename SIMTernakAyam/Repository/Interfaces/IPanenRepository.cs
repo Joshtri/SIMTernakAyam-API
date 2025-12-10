@@ -11,6 +11,9 @@ namespace SIMTernakAyam.Repository.Interfaces
         Task<IEnumerable<Panen>> GetWithDetailsAsync();
         Task<Panen?> GetWithDetailsAsync(Guid id);
         Task<int> GetTotalEkorPanenByKandangAsync(Guid kandangId);
+        Task<int> GetTotalEkorPanenByAyamAsync(Guid ayamId);
+        Task<int> GetTotalEkorPanenByAyamExcludingAsync(Guid ayamId, Guid excludePanenId);
         Task<decimal> GetTotalBeratPanenByDateRangeAsync(DateTime startDate, DateTime endDate);
+        Task<Dictionary<Guid, int>> GetTotalEkorPanenByAyamIdsAsync(IEnumerable<Guid> ayamIds);
     }
 }

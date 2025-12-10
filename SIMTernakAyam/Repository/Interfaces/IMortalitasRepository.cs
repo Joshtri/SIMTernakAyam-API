@@ -18,5 +18,15 @@ namespace SIMTernakAyam.Repository.Interfaces
         Task<int> GetTotalAyamBeforeMortalityAsync(Guid ayamId, DateTime tanggalKematian);
         Task<int> GetKandangCapacityAsync(Guid kandangId);
         Task<IEnumerable<Mortalitas>> SearchMortalitasAsync(string? search = null, Guid? kandangId = null);
+
+        /// <summary>
+        /// Get total mortality count for specific ayam
+        /// </summary>
+        Task<int> GetTotalMortalitasByAyamAsync(Guid ayamId);
+
+        /// <summary>
+        /// Get total mortality count for multiple ayam IDs at once (for efficient bulk queries)
+        /// </summary>
+        Task<Dictionary<Guid, int>> GetTotalMortalitasByAyamIdsAsync(IEnumerable<Guid> ayamIds);
     }
 }

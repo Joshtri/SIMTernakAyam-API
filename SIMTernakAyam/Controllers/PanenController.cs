@@ -162,5 +162,37 @@ namespace SIMTernakAyam.Controllers
                 return HandleException(ex);
             }
         }
+
+        [HttpGet("stok-ayam/{ayamId}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetStokAyam(Guid ayamId)
+        {
+            try
+            {
+                var stokInfo = await _panenService.GetStokAyamAsync(ayamId);
+                
+                if (stokInfo.TotalMasuk == 0)
+                {
+                    return NotFound("Data ayam tidak ditemukan.");
+                }
+
+                var response = new
+                {
+                    ayamId = ayamId,
+                    totalMasuk = stokInfo.TotalMasuk,
+                    sudahDipanen = stokInfo.SudahDipanen,
+                    sisaTersedia = stokInfo.SisaTersedia,
+                    persentaseDipanen = stokInfo.TotalMasuk > 0 ? Math.Round((decimal)stokInfo.SudahDipanen / stokInfo.TotalMasuk * 100, 2) : 0,
+                    bisaDipanen = stokInfo.SisaTersedia > 0
+                };
+
+                return Success(response, "Berhasil mengambil informasi stok ayam.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
     }
 }

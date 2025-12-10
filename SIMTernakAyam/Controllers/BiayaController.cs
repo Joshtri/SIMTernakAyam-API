@@ -10,10 +10,14 @@ namespace SIMTernakAyam.Controllers
     public class BiayaController : BaseController
     {
         private readonly IBiayaService _biayaService;
+        private readonly IVaksinService _vaksinService;
+        private readonly IPakanService _pakanService;
 
-        public BiayaController(IBiayaService biayaService)
+        public BiayaController(IBiayaService biayaService, IVaksinService vaksinService, IPakanService pakanService)
         {
             _biayaService = biayaService;
+            _vaksinService = vaksinService;
+            _pakanService = pakanService;
         }
 
         [HttpGet]
@@ -47,6 +51,51 @@ namespace SIMTernakAyam.Controllers
 
                 var response = BiayaResponseDto.FromEntity(biaya);
                 return Success(response, "Berhasil mengambil data biaya.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpPost("validate-stock-before-create")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        public async Task<IActionResult> ValidateStockBeforeCreate([FromBody] ValidateStockDto dto)
+        {
+            try
+            {
+                var validationResults = new List<object>();
+
+                // Validasi stok vaksin jika ada
+                if (dto.VaksinId.HasValue && dto.VaksinId != Guid.Empty)
+                {
+                    var vaksinAvailability = await _vaksinService.CheckStockAvailabilityAsync(dto.VaksinId.Value, dto.JumlahVaksin ?? 0);
+                    if (vaksinAvailability != null)
+                    {
+                        validationResults.Add(new
+                        {
+                            Type = "Vaksin",
+                            Data = vaksinAvailability
+                        });
+                    }
+                }
+
+                // Validasi stok pakan jika ada
+                if (dto.PakanId.HasValue && dto.PakanId != Guid.Empty)
+                {
+                    var pakanAvailability = await _pakanService.CheckStockAvailabilityAsync(dto.PakanId.Value, dto.JumlahPakan ?? 0);
+                    if (pakanAvailability != null)
+                    {
+                        validationResults.Add(new
+                        {
+                            Type = "Pakan",
+                            Data = pakanAvailability
+                        });
+                    }
+                }
+
+                return Success(validationResults, "Berhasil melakukan validasi stok.");
             }
             catch (Exception ex)
             {
@@ -272,5 +321,37 @@ namespace SIMTernakAyam.Controllers
                 return HandleException(ex);
             }
         }
+
+        [HttpGet("stock-info")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        public async Task<IActionResult> GetStockInfo()
+        {
+            try
+            {
+                var vaksinWithUsage = await _vaksinService.GetAllVaksinWithUsageDetailAsync();
+                var pakanWithUsage = await _pakanService.GetAllPakanWithUsageDetailAsync();
+
+                var stockInfo = new
+                {
+                    Vaksin = vaksinWithUsage,
+                    Pakan = pakanWithUsage
+                };
+
+                return Success(stockInfo, "Berhasil mengambil informasi stok dengan detail penggunaan.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+    }
+
+    // DTO untuk validasi stok
+    public class ValidateStockDto
+    {
+        public Guid? VaksinId { get; set; }
+        public int? JumlahVaksin { get; set; }
+        public Guid? PakanId { get; set; }
+        public decimal? JumlahPakan { get; set; }
     }
 }

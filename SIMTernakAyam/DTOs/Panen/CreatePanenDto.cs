@@ -11,7 +11,7 @@ namespace SIMTernakAyam.DTOs.Panen
         public DateTime TanggalPanen { get; set; }
 
         [Required(ErrorMessage = "Jumlah ekor panen wajib diisi.")]
-        [Range(1, 1000000, ErrorMessage = "Jumlah ekor panen harus antara 1 sampai 1000000.")]
+        [Range(1, 1000000, ErrorMessage = "Jumlah ekor panen harus antara 1 sampai 1000000. Pastikan tidak melebihi stok ayam yang tersedia.")]
         public int JumlahEkorPanen { get; set; }
 
         [Required(ErrorMessage = "Berat rata-rata wajib diisi.")]

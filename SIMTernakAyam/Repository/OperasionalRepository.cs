@@ -85,5 +85,25 @@ namespace SIMTernakAyam.Repository
                 .Include(o => o.Vaksin)
                 .FirstOrDefaultAsync(o => o.Id == id);
         }
+
+        public async Task<IEnumerable<Operasional>> GetByVaksinIdAndPeriodAsync(Guid vaksinId, DateTime startDate, DateTime endDate)
+        {
+            return await _context.Operasionals
+                .Where(o => o.VaksinId == vaksinId && 
+                           o.Tanggal >= startDate && 
+                           o.Tanggal <= endDate)
+                .OrderByDescending(o => o.Tanggal)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Operasional>> GetByPakanIdAndPeriodAsync(Guid pakanId, DateTime startDate, DateTime endDate)
+        {
+            return await _context.Operasionals
+                .Where(o => o.PakanId == pakanId && 
+                           o.Tanggal >= startDate && 
+                           o.Tanggal <= endDate)
+                .OrderByDescending(o => o.Tanggal)
+                .ToListAsync();
+        }
     }
 }

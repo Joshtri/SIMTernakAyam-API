@@ -1,0 +1,153 @@
+### ?? OPERASIONAL UPDATE - ENTITY TRACKING CONFLICT FIX ###
+### Fixes: "The instance of entity type 'Operasional' cannot be tracked because another instance with the same key value for {'Id'} is already being tracked"
+
+@baseUrl = https://localhost:7195
+@contentType = application/json
+
+### ========================================================================================
+### ?? TEST 1: GET EXISTING OPERASIONAL FOR UPDATE
+### ========================================================================================
+
+GET {{baseUrl}}/api/operasionals
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 2: UPDATE OPERASIONAL - SHOULD NOT HAVE TRACKING CONFLICT
+### Use an actual ID from the GET response above
+### Include ID in body as required by the application pattern
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T10:00:00Z",
+  "jumlah": 20,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+### ========================================================================================
+### ?? TEST 3: UPDATE WITH STOCK TRACKING (Vaksin)
+### This should trigger stock calculations without tracking conflicts
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T11:00:00Z",
+  "jumlah": 5,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? TEST 4: UPDATE WITH VALIDATION ENDPOINT (Alternative)
+### This endpoint doesn't require ID in body
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea/update-with-validation
+Content-Type: {{contentType}}
+
+{
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T12:00:00Z",
+  "jumlah": 3,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+### ========================================================================================
+### ?? TEST 5: VERIFY NO TRACKING CONFLICTS WITH MULTIPLE UPDATES
+### Rapid succession updates should not cause tracking conflicts
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-10T13:00:00Z",
+  "jumlah": 8,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? TEST 6: VERIFY FINAL STATE
+### Check that the updates were successful and stock was tracked properly
+### ========================================================================================
+
+GET {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 7: CHECK STOCK LEVELS AFTER UPDATES
+### Verify that stock tracking worked correctly
+### ========================================================================================
+
+GET {{baseUrl}}/api/vaksins/with-usage-detail
+Accept: {{contentType}}
+
+###
+
+GET {{baseUrl}}/api/pakans/with-usage-detail
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? EXPECTED RESULTS
+### ========================================================================================
+
+# ? All update tests should return 200 OK:
+# {
+#   "success": true,
+#   "message": "Data berhasil diupdate.",
+#   "data": null,
+#   "errors": null,
+#   "statusCode": 200,
+#   "timestamp": "2024-12-10T..."
+# }
+
+# ? Should NOT return tracking conflict error:
+# {
+#   "success": false,
+#   "message": "Terjadi kesalahan: The instance of entity type 'Operasional' cannot be tracked...",
+#   "statusCode": 400
+# }
+
+# ? Stock should be properly tracked with updated usage counts
+
+### ========================================================================================
+### ?? WHAT WAS FIXED
+### ========================================================================================
+
+# PROBLEM: Entity tracking conflict in OperasionalService.AfterUpdateAsync
+# - Method was calling GetByIdAsync() again after entity was already tracked
+# - This caused EF to try to track the same entity twice with same ID
+# - Result: "cannot be tracked because another instance with the same key value is already being tracked"
+
+# SOLUTION:
+# 1. ? Modified BaseService.UpdateAsync to pass existingEntity to AfterUpdateAsync
+# 2. ? Added overloaded AfterUpdateAsync(T entity, T existingEntity) method
+# 3. ? Updated OperasionalService to use existingEntity parameter instead of fetching again
+# 4. ? Used GetByIdNoTrackingAsync in validation where needed
+
+# BENEFITS:
+# - ? No more entity tracking conflicts
+# - ? Better performance (no extra database calls)
+# - ? Cleaner, more predictable entity state management
+# - ? Stock tracking still works correctly

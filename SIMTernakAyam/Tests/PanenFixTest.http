@@ -1,0 +1,31 @@
+### Quick Test - Fixed Null Reference Issue
+
+### Step 1: Check if we have any Ayam data
+GET https://localhost:7195/api/ayams
+
+### Step 2: Create a simple Panen (modify ayamId with real ID from step 1)
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "replace-with-real-ayam-id",
+  "tanggalPanen": "2025-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 2.00
+}
+
+### Step 3: Test with invalid BeratRataRata (should now give proper validation error)
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "replace-with-real-ayam-id", 
+  "tanggalPanen": "2025-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 150.00
+}
+
+### Expected Results:
+# Step 1: Should return list of Ayam with their IDs
+# Step 2: Should create successfully with HTTP 201
+# Step 3: Should fail validation with proper error message (not 500)

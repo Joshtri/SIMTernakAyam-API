@@ -11,5 +11,9 @@ namespace SIMTernakAyam.Services.Interfaces
         Task<Panen?> GetPanenWithDetailsAsync(Guid id);
         Task<int> GetTotalEkorPanenByKandangAsync(Guid kandangId);
         Task<decimal> GetTotalBeratPanenByPeriodAsync(DateTime startDate, DateTime endDate);
+        /// <summary>
+        /// Get available chicken stock information for an Ayam
+        /// </summary>
+        Task<(int TotalMasuk, int SudahDipanen, int SisaTersedia)> GetStokAyamAsync(Guid ayamId);
     }
 }

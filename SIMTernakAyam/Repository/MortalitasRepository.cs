@@ -183,5 +183,25 @@ namespace SIMTernakAyam.Repository
                 .Where(m => m.TanggalKematian >= startUtc && m.TanggalKematian <= endUtc)
                 .SumAsync(m => m.JumlahKematian);
         }
+
+        // Get total mortality count for specific ayam
+        public async Task<int> GetTotalMortalitasByAyamAsync(Guid ayamId)
+        {
+            return await _database
+                .Where(m => m.AyamId == ayamId)
+                .SumAsync(m => m.JumlahKematian);
+        }
+
+        // Get total mortality count for multiple ayam IDs at once (for efficient bulk queries)
+        public async Task<Dictionary<Guid, int>> GetTotalMortalitasByAyamIdsAsync(IEnumerable<Guid> ayamIds)
+        {
+            var result = await _database
+                .Where(m => ayamIds.Contains(m.AyamId))
+                .GroupBy(m => m.AyamId)
+                .Select(g => new { AyamId = g.Key, Total = g.Sum(m => m.JumlahKematian) })
+                .ToListAsync();
+
+            return result.ToDictionary(x => x.AyamId, x => x.Total);
+        }
     }
 }

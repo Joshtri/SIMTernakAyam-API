@@ -10,5 +10,9 @@ namespace SIMTernakAyam.Repository.Interfaces
         Task<IEnumerable<Operasional>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
         Task<IEnumerable<Operasional>> GetWithDetailsAsync();
         Task<Operasional?> GetWithDetailsAsync(Guid id);
+        
+        // Method baru untuk tracking penggunaan stok
+        Task<IEnumerable<Operasional>> GetByVaksinIdAndPeriodAsync(Guid vaksinId, DateTime startDate, DateTime endDate);
+        Task<IEnumerable<Operasional>> GetByPakanIdAndPeriodAsync(Guid pakanId, DateTime startDate, DateTime endDate);
     }
 }

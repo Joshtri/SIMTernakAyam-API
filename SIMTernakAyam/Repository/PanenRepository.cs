@@ -98,5 +98,30 @@ namespace SIMTernakAyam.Repository
 
             return panens.Sum(p => p.JumlahEkorPanen * p.BeratRataRata);
         }
+
+        public async Task<int> GetTotalEkorPanenByAyamAsync(Guid ayamId)
+        {
+            return await _context.Panens
+                .Where(p => p.AyamId == ayamId)
+                .SumAsync(p => p.JumlahEkorPanen);
+        }
+
+        public async Task<int> GetTotalEkorPanenByAyamExcludingAsync(Guid ayamId, Guid excludePanenId)
+        {
+            return await _context.Panens
+                .Where(p => p.AyamId == ayamId && p.Id != excludePanenId)
+                .SumAsync(p => p.JumlahEkorPanen);
+        }
+
+        public async Task<Dictionary<Guid, int>> GetTotalEkorPanenByAyamIdsAsync(IEnumerable<Guid> ayamIds)
+        {
+            var result = await _context.Panens
+                .Where(p => ayamIds.Contains(p.AyamId))
+                .GroupBy(p => p.AyamId)
+                .Select(g => new { AyamId = g.Key, Total = g.Sum(p => p.JumlahEkorPanen) })
+                .ToListAsync();
+
+            return result.ToDictionary(x => x.AyamId, x => x.Total);
+        }
     }
 }

@@ -31,6 +31,63 @@ namespace SIMTernakAyam.Controllers
             }
         }
 
+        [HttpGet("with-usage-detail")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<PakanResponseDto>>), 200)]
+        public async Task<IActionResult> GetAllWithUsageDetail()
+        {
+            try
+            {
+                var pakansWithUsage = await _pakanService.GetAllPakanWithUsageDetailAsync();
+                return Success(pakansWithUsage, "Berhasil mengambil semua data pakan dengan detail penggunaan.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{id}/usage-detail")]
+        [ProducesResponseType(typeof(Common.ApiResponse<PakanResponseDto>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetUsageDetailById(Guid id)
+        {
+            try
+            {
+                var pakanWithUsage = await _pakanService.GetPakanWithUsageDetailAsync(id);
+                if (pakanWithUsage == null)
+                {
+                    return NotFound("Data pakan tidak ditemukan.");
+                }
+
+                return Success(pakanWithUsage, "Berhasil mengambil data pakan dengan detail penggunaan.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{id}/check-availability/{jumlahDibutuhkan}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> CheckAvailability(Guid id, decimal jumlahDibutuhkan)
+        {
+            try
+            {
+                var availability = await _pakanService.CheckStockAvailabilityAsync(id, jumlahDibutuhkan);
+                if (availability == null)
+                {
+                    return NotFound("Data pakan tidak ditemukan.");
+                }
+
+                return Success(availability, "Berhasil mengecek ketersediaan stok pakan.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(Common.ApiResponse<PakanResponseDto>), 200)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
@@ -222,6 +279,27 @@ namespace SIMTernakAyam.Controllers
                 }
 
                 return Success(result.Message, 200);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{id}/diagnostic")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetStokDiagnostic(Guid id)
+        {
+            try
+            {
+                var diagnostic = await _pakanService.GetStokDiagnosticAsync(id);
+                if (diagnostic == null)
+                {
+                    return NotFound("Data pakan tidak ditemukan.");
+                }
+
+                return Success(diagnostic, "Berhasil mengambil diagnostic stok pakan.");
             }
             catch (Exception ex)
             {

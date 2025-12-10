@@ -1,0 +1,109 @@
+File: SIMTernakAyam\Tests\PanenStockValidationTest.http
+````````
+### Test Panen Stock Validation - Enhanced
+
+### Step 1: Get Ayam data with stock info
+GET https://localhost:7195/api/ayams
+Accept: application/json
+
+### Step 2: Get stock information for specific ayam (NEW ENDPOINT)
+GET https://localhost:7195/api/panens/stok-ayam/{replace-with-ayam-id}
+Accept: application/json
+
+### Expected Response:
+# {
+#   "success": true,
+#   "message": "Berhasil mengambil informasi stok ayam.",
+#   "data": {
+#     "ayamId": "guid",
+#     "totalMasuk": 1000,
+#     "sudahDipanen": 300,
+#     "sisaTersedia": 700,
+#     "persentaseDipanen": 30.00,
+#     "bisaDipanen": true
+#   }
+# }
+
+### Step 3: Get existing Panen data to see what's already harvested
+GET https://localhost:7195/api/panens
+Accept: application/json
+
+### Step 4: Create panen with VALID quantity (within available stock)
+# Replace ayamId with real ID from Step 1
+# Make sure jumlahEkorPanen <= sisaTersedia from Step 2
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "replace-with-real-ayam-id",
+  "tanggalPanen": "2025-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 2.00
+}
+
+### Expected: HTTP 201 Created
+
+### Step 5: Create panen with EXCESSIVE quantity (exceeds stock)
+# Replace ayamId with same ID from Step 4
+# Make jumlahEkorPanen > sisaTersedia from Step 2
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "replace-with-real-ayam-id",
+  "tanggalPanen": "2025-01-15T11:00:00Z",
+  "jumlahEkorPanen": 99999,
+  "beratRataRata": 2.00
+}
+
+### Expected: HTTP 400 Bad Request
+# {
+#   "success": false,
+#   "message": "Jumlah panen (99999 ekor) melebihi sisa ayam yang tersedia (X ekor). Total ayam masuk: Y, sudah dipanen: Z.",
+#   "data": null
+# }
+
+### Step 6: Test update with stock validation
+# First create a panen, then try to update it with excessive quantity
+PUT https://localhost:7195/api/panens/{existing-panen-id}
+Content-Type: application/json
+
+{
+  "id": "existing-panen-id",
+  "ayamId": "same-ayam-id",
+  "tanggalPanen": "2025-01-15T12:00:00Z", 
+  "jumlahEkorPanen": 99999,
+  "beratRataRata": 2.00
+}
+
+### Expected: HTTP 400 Bad Request with stock validation message
+
+### Step 7: Test with ayam that has no stock left
+# This should fail even with small quantity
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "ayam-id-with-no-stock-left",
+  "tanggalPanen": "2025-01-15T13:00:00Z",
+  "jumlahEkorPanen": 1,
+  "beratRataRata": 2.00
+}
+
+### Expected: HTTP 400 Bad Request
+# {
+#   "success": false,
+#   "message": "Tidak ada ayam yang tersedia untuk dipanen. Semua ayam sudah dipanen.",
+#   "data": null
+# }
+
+### Step 8: Test stock info for non-existent ayam
+GET https://localhost:7195/api/panens/stok-ayam/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Expected: HTTP 404 Not Found
+# {
+#   "success": false,
+#   "message": "Data ayam tidak ditemukan.",
+#   "data": null
+# }

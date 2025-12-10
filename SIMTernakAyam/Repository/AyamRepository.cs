@@ -11,6 +11,25 @@ namespace SIMTernakAyam.Repository
         {
         }
 
+        // Override to include relations by default
+        public override async Task<Ayam?> GetByIdAsync(Guid id)
+        {
+            return await _context.Ayams
+                .Include(a => a.Kandang)
+                .ThenInclude(k => k.User)
+                .FirstOrDefaultAsync(a => a.Id == id);
+        }
+
+        // Override to include relations by default
+        public override async Task<IEnumerable<Ayam>> GetAllAsync()
+        {
+            return await _context.Ayams
+                .Include(a => a.Kandang)
+                .ThenInclude(k => k.User)
+                .OrderByDescending(a => a.TanggalMasuk)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<Ayam>> GetByKandangIdAsync(Guid kandangId)
         {
             return await _context.Ayams

@@ -3,7 +3,7 @@
     public class Panen : BaseModel
     {
         public Guid AyamId { get; set; }
-        public Ayam Ayam { get; set; }
+        public Ayam? Ayam { get; set; } // Make nullable to prevent null reference
 
         public DateTime TanggalPanen { get; set; }
         public int JumlahEkorPanen { get; set; }

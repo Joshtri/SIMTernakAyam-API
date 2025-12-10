@@ -1,0 +1,137 @@
+### Test Operasional dengan Pakan & Vaksin
+
+@baseUrl = https://localhost:7777/api
+
+### 1. Get Form Data untuk Operasional
+GET {{baseUrl}}/operasionals/form-data
+
+### 2. Test Create Operasional dengan Vaksin
+POST {{baseUrl}}/operasionals/create-with-validation
+Content-Type: application/json
+
+{
+  "jenisKegiatanId": "4dd041a4-90c3-493e-913b-531ece5274f1",
+  "tanggal": "2025-12-10T10:00:00Z",
+  "jumlah": 2,
+  "petugasId": "15deaabd-dc4c-413f-97ef-2bb341f3fea4",
+  "kandangId": "fd082b84-41c8-45d4-8480-ddb918f74cca",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5"
+}
+
+### 3. Test Create Operasional dengan Pakan
+POST {{baseUrl}}/operasionals/create-with-validation
+Content-Type: application/json
+
+{
+  "jenisKegiatanId": "4dd041a4-90c3-493e-913b-531ece5274f1",
+  "tanggal": "2025-12-10T10:00:00Z",
+  "jumlah": 50,
+  "petugasId": "15deaabd-dc4c-413f-97ef-2bb341f3fea4",
+  "kandangId": "fd082b84-41c8-45d4-8480-ddb918f74cca",
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+### 4. Test Create Operasional dengan Both Vaksin & Pakan
+POST {{baseUrl}}/operasionals/create-with-validation
+Content-Type: application/json
+
+{
+  "jenisKegiatanId": "4dd041a4-90c3-493e-913b-531ece5274f1",
+  "tanggal": "2025-12-10T10:00:00Z",
+  "jumlah": 1,
+  "petugasId": "15deaabd-dc4c-413f-97ef-2bb341f3fea4",
+  "kandangId": "fd082b84-41c8-45d4-8480-ddb918f74cca",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+### 5. Test Update Operasional yang sudah ada (tambahkan vaksin ID)
+PUT {{baseUrl}}/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: application/json
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "4dd041a4-90c3-493e-913b-531ece5274f1",
+  "tanggal": "2025-10-11T00:00:00",
+  "jumlah": 2,
+  "petugasId": "15deaabd-dc4c-413f-97ef-2bb341f3fea4",
+  "kandangId": "fd082b84-41c8-45d4-8480-ddb918f74cca",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "pakanId": null
+}
+
+### 6. Test Validasi Stok - Vaksin Available
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "jumlah": 2
+}
+
+### 7. Test Validasi Stok - Vaksin Not Available
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "jumlah": 10
+}
+
+### 8. Test Validasi Stok - Pakan Available
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db",
+  "jumlah": 100
+}
+
+### 9. Test Validasi Stok - Pakan Not Available
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db",
+  "jumlah": 10000
+}
+
+### 10. Test Create Operasional Biasa tanpa Vaksin/Pakan
+POST {{baseUrl}}/operasionals
+Content-Type: application/json
+
+{
+  "jenisKegiatanId": "4dd041a4-90c3-493e-913b-531ece5274f1",
+  "tanggal": "2025-12-10T10:00:00Z",
+  "jumlah": 1,
+  "petugasId": "15deaabd-dc4c-413f-97ef-2bb341f3fea4",
+  "kandangId": "fd082b84-41c8-45d4-8480-ddb918f74cca"
+}
+
+### 11. Test Get All Operasional (cek apakah vaksinId & pakanId sudah ada)
+GET {{baseUrl}}/operasionals
+
+### 12. Test Get Operasional by ID (cek detail)
+GET {{baseUrl}}/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+
+### 13. Test Create dengan Stok Tidak Cukup (Expected Error)
+POST {{baseUrl}}/operasionals/create-with-validation
+Content-Type: application/json
+
+{
+  "jenisKegiatanId": "4dd041a4-90c3-493e-913b-531ece5274f1",
+  "tanggal": "2025-12-10T10:00:00Z",
+  "jumlah": 100,
+  "petugasId": "15deaabd-dc4c-413f-97ef-2bb341f3fea4",
+  "kandangId": "fd082b84-41c8-45d4-8480-ddb918f74cca",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5"
+}
+
+### 14. Cek Stock Info setelah Operasional
+GET {{baseUrl}}/biayas/stock-info
+
+### 15. Cek Vaksin dengan Usage Detail
+GET {{baseUrl}}/vaksins/with-usage-detail
+
+### 16. Cek Pakan dengan Usage Detail
+GET {{baseUrl}}/pakans/with-usage-detail

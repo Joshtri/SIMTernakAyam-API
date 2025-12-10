@@ -1,0 +1,179 @@
+### ?? ENHANCED ENTITY TRACKING FIX - OPERASIONAL UPDATE ###
+### Additional fixes for persistent entity tracking conflicts
+
+@baseUrl = https://localhost:7195
+@contentType = application/json
+
+### ========================================================================================
+### ?? TEST 1: GET EXISTING OPERASIONAL FOR UPDATE TEST
+### ========================================================================================
+
+GET {{baseUrl}}/api/operasionals
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? TEST 2: SIMPLE UPDATE TEST (Should work without tracking conflict)
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-11T10:00:00Z",
+  "jumlah": 25,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? TEST 3: UPDATE WITH PAKAN (Stock tracking + BiayaService interaction)
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-11T11:00:00Z",
+  "jumlah": 15,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+### ========================================================================================
+### ?? TEST 4: UPDATE WITH VAKSIN (Complex scenario)
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-11T12:00:00Z",
+  "jumlah": 8,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? TEST 5: MULTIPLE RAPID UPDATES (Stress test)
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-11T13:00:00Z",
+  "jumlah": 12,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+###
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Content-Type: {{contentType}}
+
+{
+  "id": "3359f6c9-827d-458c-87e3-44ced3a4ceea",
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-11T14:00:00Z",
+  "jumlah": 18,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "pakanId": null
+}
+
+### ========================================================================================
+### ?? TEST 6: VALIDATION ENDPOINT (Alternative approach)
+### ========================================================================================
+
+PUT {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea/update-with-validation
+Content-Type: {{contentType}}
+
+{
+  "jenisKegiatanId": "550e8400-e29b-41d4-a716-446655440001",
+  "tanggal": "2024-12-11T15:00:00Z",
+  "jumlah": 10,
+  "petugasId": "550e8400-e29b-41d4-a716-446655440000",
+  "kandangId": "550e8400-e29b-41d4-a716-446655440002",
+  "vaksinId": null,
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db"
+}
+
+### ========================================================================================
+### ?? TEST 7: VERIFY FINAL STATE
+### ========================================================================================
+
+GET {{baseUrl}}/api/operasionals/3359f6c9-827d-458c-87e3-44ced3a4ceea
+Accept: {{contentType}}
+
+### ========================================================================================
+### ?? ENHANCED FIXES IMPLEMENTED
+### ========================================================================================
+
+# ?? MULTIPLE LAYER FIX APPROACH:
+
+# 1. ? BaseRepository Enhanced:
+#    - Added ClearTrackedEntities() method
+#    - Added DetachEntity() method  
+#    - Better UpdateAsync entity state management
+
+# 2. ? BaseService Enhanced:
+#    - Clear tracked entities before update
+#    - Detach entity after SaveChanges
+#    - Pass existingEntity to avoid re-fetching
+
+# 3. ? OperasionalService Enhanced:
+#    - Use existingEntity in AfterUpdateAsync
+#    - Enhanced UpsertBiayaForOperasional with error handling
+#    - Prevent nested UpdateAsync conflicts
+
+# 4. ? Safety Measures:
+#    - Try-catch blocks for nested operations
+#    - No-tracking queries where possible
+#    - Entity state verification before operations
+
+### ========================================================================================
+### ?? EXPECTED RESULTS
+### ========================================================================================
+
+# ? ALL TESTS Should return 200 OK:
+# {
+#   "success": true,
+#   "message": "Data berhasil diupdate.",
+#   "statusCode": 200
+# }
+
+# ? Should NOT return tracking conflict:
+# "The instance of entity type 'Operasional' cannot be tracked because another instance with the same key value for {'Id'} is already being tracked"
+
+# ? Stock tracking should remain accurate
+# ? Biaya auto-update should work (or fail gracefully)
+
+### ========================================================================================
+### ?? IF STILL FAILING - ALTERNATIVE SOLUTIONS
+### ========================================================================================
+
+# OPTION A: Use separate DbContext for nested operations
+# OPTION B: Use raw SQL for biaya updates  
+# OPTION C: Queue biaya updates for background processing
+# OPTION D: Disable biaya auto-update temporarily
+
+# The current implementation includes error handling to prevent
+# biaya update failures from affecting the main operasional update

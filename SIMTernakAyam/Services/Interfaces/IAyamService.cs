@@ -9,5 +9,10 @@ namespace SIMTernakAyam.Services.Interfaces
         Task<int> GetTotalAyamCountInKandangAsync(Guid kandangId);
         Task<IEnumerable<Ayam>> GetAllAyamWithDetailsAsync();
         Task<Ayam?> GetAyamWithDetailsAsync(Guid id);
+
+        /// <summary>
+        /// Get ayam data with comprehensive stock information (harvest, mortality, survival rate)
+        /// </summary>
+        Task<IEnumerable<Ayam>> GetAllAyamWithStockInfoAsync();
     }
 }

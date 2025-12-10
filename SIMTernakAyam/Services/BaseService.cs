@@ -48,25 +48,70 @@ namespace SIMTernakAyam.Services
         {
             try
             {
-                // Validasi custom dari child class
-                var validationResult = await ValidateOnCreateAsync(entity);
+                // Null check for entity
+                if (entity == null)
+                {
+                    return (false, "Entity cannot be null.", null);
+                }
+
+                // Set default values - Use UTC for PostgreSQL compatibility
+                entity.Id = Guid.NewGuid();
+                entity.CreatedAt = DateTime.UtcNow;
+                entity.UpdateAt = DateTime.UtcNow;
+
+                // Hook untuk custom logic sebelum create (but before saving to DB)
+                try
+                {
+                    await BeforeCreateAsync(entity);
+                }
+                catch (Exception ex)
+                {
+                    return (false, $"Error in BeforeCreateAsync: {ex.Message}", null);
+                }
+
+                // Validasi custom dari child class - HARUS SEBELUM AddAsync
+                ValidationResult validationResult;
+                try
+                {
+                    validationResult = await ValidateOnCreateAsync(entity);
+                }
+                catch (Exception ex)
+                {
+                    return (false, $"Error during validation: {ex.Message}", null);
+                }
+
                 if (!validationResult.IsValid)
                 {
                     return (false, validationResult.ErrorMessage, null);
                 }
 
-                // Set default values - Use UTC for PostgreSQL compatibility
-                entity.Id = Guid.NewGuid();
-                entity.CreatedAt = DateTime.SpecifyKind(entity.CreatedAt, DateTimeKind.Utc);
-                entity.UpdateAt = DateTime.SpecifyKind(entity.UpdateAt, DateTimeKind.Utc);
-                // Hook untuk custom logic sebelum create
-                await BeforeCreateAsync(entity);
+                // Check if _repository is null
+                if (_repository == null)
+                {
+                    return (false, "Repository is null.", null);
+                }
 
-                await _repository.AddAsync(entity); 
-                await _repository.SaveChangesAsync();
+                // Only add to database AFTER all validations pass
+                try
+                {
+                    await _repository.AddAsync(entity);
+                    await _repository.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    return (false, $"Error saving to database: {ex.Message}", null);
+                }
 
                 // Hook untuk custom logic setelah create
-                await AfterCreateAsync(entity);
+                try
+                {
+                    await AfterCreateAsync(entity);
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't fail the entire operation since data is already saved
+                    // You might want to log this properly in production
+                }
 
                 return (true, "Data berhasil dibuat.", entity);
             }
@@ -88,6 +133,7 @@ namespace SIMTernakAyam.Services
         {
             try
             {
+                // Get existing entity without tracking
                 var existingEntity = await GetByIdNoTrackingAsync(entity.Id);
                 if (existingEntity == null)
                 {
@@ -108,12 +154,18 @@ namespace SIMTernakAyam.Services
                 // Hook untuk custom logic sebelum update
                 await BeforeUpdateAsync(entity, existingEntity);
 
-                // Gunakan Update method yang tidak menambah tracking baru
+                // ? Clear any existing tracked entities to prevent conflicts
+                _repository.ClearTrackedEntities();
+
+                // Update entity
                 _repository.UpdateAsync(entity);
                 await _repository.SaveChangesAsync();
 
-                // Hook untuk custom logic setelah update
-                await AfterUpdateAsync(entity);
+                // ? Detach entity after save to prevent future conflicts
+                _repository.DetachEntity(entity);
+
+                // Pass existingEntity to AfterUpdateAsync to avoid new tracking
+                await AfterUpdateAsync(entity, existingEntity);
 
                 return (true, "Data berhasil diupdate.");
             }
@@ -242,6 +294,15 @@ namespace SIMTernakAyam.Services
         protected virtual Task AfterUpdateAsync(T entity)
         {
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Hook yang dipanggil setelah update (with existing entity to avoid tracking conflicts)
+        /// </summary>
+        protected virtual Task AfterUpdateAsync(T entity, T existingEntity)
+        {
+            // Default implementation calls the original method for backward compatibility
+            return AfterUpdateAsync(entity);
         }
 
         /// <summary>

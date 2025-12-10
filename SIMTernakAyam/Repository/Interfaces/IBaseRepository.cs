@@ -12,5 +12,9 @@ namespace SIMTernakAyam.Repositories.Interfaces
         void UpdateAsync(T entity);
         void Delete(T entity);
         Task SaveChangesAsync();
+        
+        // ✅ Add entity state management methods to prevent tracking conflicts
+        void DetachEntity(T entity);
+        void ClearTrackedEntities();
     }
 }

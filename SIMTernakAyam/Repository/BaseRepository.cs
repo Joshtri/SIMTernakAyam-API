@@ -53,19 +53,45 @@ namespace SIMTernakAyam.Repository
 
         public virtual void UpdateAsync(T entity)
         {
-            // Cek apakah entity sudah di-track
-            var trackedEntity = _context.Entry(entity).Entity;
-            var isTracked = _context.Entry(entity).State != EntityState.Detached;
-
-            if (isTracked)
+            // ✅ ENHANCED: Better entity state management
+            var entry = _context.Entry(entity);
+            
+            if (entry.State == EntityState.Detached)
             {
-                // Jika sudah di-track, update state
-                _context.Entry(entity).State = EntityState.Modified;
+                // Entity is not tracked, use Update to start tracking
+                _database.Update(entity);
             }
             else
             {
-                // Jika belum di-track, gunakan Update
-                _database.Update(entity);
+                // Entity is already tracked, just mark as modified
+                entry.State = EntityState.Modified;
+            }
+        }
+
+        /// <summary>
+        /// Detach entity from context to prevent tracking conflicts
+        /// </summary>
+        public virtual void DetachEntity(T entity)
+        {
+            var entry = _context.Entry(entity);
+            if (entry.State != EntityState.Detached)
+            {
+                entry.State = EntityState.Detached;
+            }
+        }
+
+        /// <summary>
+        /// Clear all tracked entities for this type
+        /// </summary>
+        public virtual void ClearTrackedEntities()
+        {
+            var entries = _context.ChangeTracker.Entries<T>()
+                .Where(e => e.State != EntityState.Detached)
+                .ToList();
+            
+            foreach (var entry in entries)
+            {
+                entry.State = EntityState.Detached;
             }
         }
     }

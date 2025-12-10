@@ -1,0 +1,115 @@
+File: SIMTernakAyam\Tests\PanenValidationTests.http
+````````
+### Test Create Panen - Validation Fix
+
+# Test 1: Create with invalid BeratRataRata (should fail and NOT create record)
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "some-valid-guid-here",
+  "tanggalPanen": "2025-01-15T10:00:00Z",
+  "jumlahEkorPanen": 100,
+  "beratRataRata": 150.50
+}
+
+### Expected Response:
+# HTTP 400 Bad Request
+# {
+#   "success": false,
+#   "message": "Berat rata-rata harus antara 0.01 sampai 100.00 kg.",
+#   "data": null
+# }
+
+---
+
+# Test 2: Create with valid BeratRataRata (should succeed)
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "some-valid-guid-here", 
+  "tanggalPanen": "2025-01-15T10:00:00Z",
+  "jumlahEkorPanen": 100,
+  "beratRataRata": 2.50
+}
+
+### Expected Response:
+# HTTP 201 Created
+# {
+#   "success": true,
+#   "message": "Data berhasil dibuat.",
+#   "data": { ... }
+# }
+
+---
+
+# Test 3: Create with BeratRataRata too small (should fail)
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "some-valid-guid-here",
+  "tanggalPanen": "2025-01-15T10:00:00Z", 
+  "jumlahEkorPanen": 100,
+  "beratRataRata": 0.005
+}
+
+### Expected Response:
+# HTTP 400 Bad Request - DARI DTO VALIDATION
+# {
+#   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+#   "title": "One or more validation errors occurred.",
+#   "status": 400,
+#   "errors": {
+#     "BeratRataRata": [
+#       "Berat rata-rata harus antara 0.01 sampai 100.00 kg."
+#     ]
+#   }
+# }
+
+---
+
+### Debug Create Panen - Enhanced Error Handling
+
+### Step 1: Test with existing Ayam ID
+# Replace the GUID below with a real Ayam ID from your database
+GET https://localhost:7195/api/ayams
+Accept: application/json
+
+### Step 2: Test create with a valid Ayam ID (GET one from above)
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "11111111-2222-3333-4444-555555555555",
+  "tanggalPanen": "2025-01-15T10:00:00Z",
+  "jumlahEkorPanen": 100,
+  "beratRataRata": 2.50
+}
+
+### Step 3: Test with simplified/minimal data
+POST https://localhost:7195/api/panens
+Content-Type: application/json
+
+{
+  "ayamId": "11111111-2222-3333-4444-555555555555",
+  "tanggalPanen": "2025-01-15T10:00:00",
+  "jumlahEkorPanen": 10,
+  "beratRataRata": 1.5
+}
+
+### Step 4: Check what's in Ayam table
+GET https://localhost:7195/api/ayams
+Accept: application/json
+
+### Expected detailed error response now:
+# Should show exact location of null reference:
+# - "Entity cannot be null."
+# - "Repository is null." 
+# - "Error in BeforeCreateAsync: ..."
+# - "Error during validation: ..."
+# - "Error saving to database: ..."
+````````
+
+# Response

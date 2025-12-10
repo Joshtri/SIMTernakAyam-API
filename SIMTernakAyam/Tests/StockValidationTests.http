@@ -1,0 +1,124 @@
+### Test Stock Validation Endpoints - SIMTernakAyam
+
+@baseUrl = https://localhost:7777/api
+
+### 1. Test Validasi Stok Operasional - Vaksin Cukup
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "jumlah": 1
+}
+
+### 2. Test Validasi Stok Operasional - Vaksin Tidak Cukup
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "jumlah": 10
+}
+
+### 3. Test Validasi Stok Operasional - Pakan
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db",
+  "jumlah": 100
+}
+
+### 4. Test Cek Ketersediaan Vaksin - Available
+GET {{baseUrl}}/vaksins/509b9562-7cee-4dd4-8ce9-d6a53569b0e5/check-availability/2
+
+### 5. Test Cek Ketersediaan Vaksin - Not Available  
+GET {{baseUrl}}/vaksins/509b9562-7cee-4dd4-8ce9-d6a53569b0e5/check-availability/10
+
+### 6. Test Cek Ketersediaan Pakan - Available
+GET {{baseUrl}}/pakans/128c96b6-7df0-4388-b20f-a56292fac2db/check-availability/100
+
+### 7. Test Cek Ketersediaan Pakan - Not Available
+GET {{baseUrl}}/pakans/128c96b6-7df0-4388-b20f-a56292fac2db/check-availability/10000
+
+### 8. Test Detail Penggunaan Vaksin
+GET {{baseUrl}}/vaksins/509b9562-7cee-4dd4-8ce9-d6a53569b0e5/usage-detail
+
+### 9. Test Detail Penggunaan Pakan
+GET {{baseUrl}}/pakans/128c96b6-7df0-4388-b20f-a56292fac2db/usage-detail
+
+### 10. Test Semua Vaksin dengan Detail Penggunaan
+GET {{baseUrl}}/vaksins/with-usage-detail
+
+### 11. Test Semua Pakan dengan Detail Penggunaan
+GET {{baseUrl}}/pakans/with-usage-detail
+
+### 12. Test Info Stok Lengkap dari Biaya Controller
+GET {{baseUrl}}/biayas/stock-info
+
+### 13. Test Validasi Stok dari Biaya Controller
+POST {{baseUrl}}/biayas/validate-stock-before-create
+Content-Type: application/json
+
+{
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "jumlahVaksin": 2,
+  "pakanId": "128c96b6-7df0-4388-b20f-a56292fac2db",
+  "jumlahPakan": 50
+}
+
+### 14. Test Vaksin dengan Stok Rendah
+GET {{baseUrl}}/vaksins/low-stock?threshold=5
+
+### 15. Test Pakan dengan Stok Rendah  
+GET {{baseUrl}}/pakans/low-stock?threshold=50
+
+### 16. Test Create Operasional (harus divalidasi dulu)
+POST {{baseUrl}}/operasionals
+Content-Type: application/json
+
+{
+  "jenisKegiatanId": "uuid-here",
+  "tanggal": "2025-12-10T10:00:00Z",
+  "jumlah": 1,
+  "petugasId": "uuid-here",
+  "kandangId": "uuid-here",
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5"
+}
+
+### 17. Test Semua Vaksin Normal
+GET {{baseUrl}}/vaksins
+
+### 18. Test Semua Pakan Normal
+GET {{baseUrl}}/pakans
+
+### 19. Test Vaksin by Type
+GET {{baseUrl}}/vaksins/by-type/0
+
+### 20. Test Update Stok Vaksin
+PUT {{baseUrl}}/vaksins/509b9562-7cee-4dd4-8ce9-d6a53569b0e5/update-stock
+Content-Type: application/json
+
+10
+
+### Test Cases untuk Error Handling
+
+### 21. Test Validasi dengan ID yang tidak ada
+GET {{baseUrl}}/vaksins/00000000-0000-0000-0000-000000000000/check-availability/1
+
+### 22. Test Validasi dengan jumlah negatif
+POST {{baseUrl}}/operasionals/validate-stock  
+Content-Type: application/json
+
+{
+  "vaksinId": "509b9562-7cee-4dd4-8ce9-d6a53569b0e5",
+  "jumlah": -1
+}
+
+### 23. Test Validasi tanpa data
+POST {{baseUrl}}/operasionals/validate-stock
+Content-Type: application/json
+
+{
+  "jumlah": 0
+}

@@ -32,6 +32,63 @@ namespace SIMTernakAyam.Controllers
             }
         }
 
+        [HttpGet("with-usage-detail")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<VaksinResponseDto>>), 200)]
+        public async Task<IActionResult> GetAllWithUsageDetail()
+        {
+            try
+            {
+                var vaksinsWithUsage = await _vaksinService.GetAllVaksinWithUsageDetailAsync();
+                return Success(vaksinsWithUsage, "Berhasil mengambil semua data vaksin dengan detail penggunaan.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{id}/usage-detail")]
+        [ProducesResponseType(typeof(Common.ApiResponse<VaksinResponseDto>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetUsageDetailById(Guid id)
+        {
+            try
+            {
+                var vaksinWithUsage = await _vaksinService.GetVaksinWithUsageDetailAsync(id);
+                if (vaksinWithUsage == null)
+                {
+                    return NotFound("Data vaksin tidak ditemukan.");
+                }
+
+                return Success(vaksinWithUsage, "Berhasil mengambil data vaksin dengan detail penggunaan.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        [HttpGet("{id}/check-availability/{jumlahDibutuhkan}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> CheckAvailability(Guid id, int jumlahDibutuhkan)
+        {
+            try
+            {
+                var availability = await _vaksinService.CheckStockAvailabilityAsync(id, jumlahDibutuhkan);
+                if (availability == null)
+                {
+                    return NotFound("Data vaksin tidak ditemukan.");
+                }
+
+                return Success(availability, "Berhasil mengecek ketersediaan stok vaksin.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(Common.ApiResponse<VaksinResponseDto>), 200)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
