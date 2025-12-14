@@ -3,6 +3,7 @@ using SIMTernakAyam.Models;
 using SIMTernakAyam.Repository.Interfaces;
 using SIMTernakAyam.Services.Interfaces;
 using SIMTernakAyam.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace SIMTernakAyam.Services
 {
@@ -82,6 +83,89 @@ namespace SIMTernakAyam.Services
             return await _notificationRepository.GetUnreadCountByUserIdAsync(userId);
         }
 
+        public async Task<(bool Success, string Message, int NotificationsSent)> BroadcastNotificationAsync(
+            BroadcastNotificationDto dto, 
+            Guid senderId)
+        {
+            try
+            {
+                _logger.LogInformation("🔔 Broadcasting notification: {Title}", dto.Title);
+
+                // Determine target users
+                List<Guid> targetUserIds = new List<Guid>();
+
+                if (string.IsNullOrEmpty(dto.TargetRole) || dto.TargetRole.ToLower() == "all" || dto.TargetRole.ToLower() == "semua")
+                {
+                    // Broadcast to ALL users
+                    _logger.LogInformation("📢 Broadcasting to ALL users");
+                    var allUsers = await _context.Users
+                        .Where(u => u.Id != senderId) // Exclude sender
+                        .Select(u => u.Id)
+                        .ToListAsync();
+                    targetUserIds.AddRange(allUsers);
+                }
+                else
+                {
+                    // Broadcast to specific role
+                    _logger.LogInformation("📢 Broadcasting to role: {Role}", dto.TargetRole);
+                    var roleUsers = await _notificationRepository.GetUserIdsByRoleAsync(dto.TargetRole);
+                    targetUserIds.AddRange(roleUsers.Where(id => id != senderId)); // Exclude sender
+                }
+
+                if (!targetUserIds.Any())
+                {
+                    return (false, "Tidak ada user yang menjadi target untuk notifikasi ini", 0);
+                }
+
+                _logger.LogInformation("Found {Count} users to notify", targetUserIds.Count);
+
+                // Create notifications for all target users
+                int notificationsSent = 0;
+                foreach (var userId in targetUserIds)
+                {
+                    var notification = new Notification
+                    {
+                        Id = Guid.NewGuid(), // Explicitly set ID
+                        UserId = userId,
+                        Title = dto.Title ?? string.Empty,
+                        Message = dto.Message ?? string.Empty,
+                        Type = dto.Type ?? "info",
+                        Priority = dto.Priority ?? "medium",
+                        LinkUrl = dto.LinkUrl,
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdateAt = DateTime.UtcNow
+                    };
+
+                    _context.Notifications.Add(notification);
+                    notificationsSent++;
+                }
+
+                await _context.SaveChangesAsync();
+
+                var targetDescription = string.IsNullOrEmpty(dto.TargetRole) || dto.TargetRole.ToLower() == "all" 
+                    ? "semua pengguna" 
+                    : $"role {dto.TargetRole}";
+
+                _logger.LogInformation("✅ Broadcast notification sent successfully to {Count} users", notificationsSent);
+
+                return (true, $"Notifikasi berhasil dikirim ke {notificationsSent} pengguna ({targetDescription})", notificationsSent);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error broadcasting notification");
+                
+                // Log inner exception for more details
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError(ex.InnerException, "❌ Inner Exception");
+                    return (false, $"Gagal mengirim broadcast: {ex.InnerException.Message}", 0);
+                }
+                
+                return (false, $"Gagal mengirim broadcast: {ex.Message}", 0);
+            }
+        }
+
         private NotificationResponseDto MapToDto(Notification notification)
         {
             return new NotificationResponseDto
@@ -91,6 +175,8 @@ namespace SIMTernakAyam.Services
                 Title = notification.Title,
                 Message = notification.Message,
                 Type = notification.Type,
+                Priority = notification.Priority,
+                LinkUrl = notification.LinkUrl,
                 IsRead = notification.IsRead,
                 CreatedAt = notification.CreatedAt,
                 ReadAt = notification.ReadAt

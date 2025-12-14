@@ -1,0 +1,97 @@
+### ========================================
+### BROADCAST NOTIFICATION - DEBUG & FIX
+### ========================================
+@baseUrl = https://localhost:7195/api
+@token = 
+
+### ========================================
+### 1. LOGIN - Get Token First
+### ========================================
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### Response: Copy accessToken to @token variable
+
+### ========================================
+### 2. CHECK CURRENT USER
+### ========================================
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### ========================================
+### 3. TEST SIMPLE BROADCAST (Minimal Fields)
+### ========================================
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Test",
+  "message": "Test message",
+  "type": "info",
+  "priority": "medium"
+}
+
+### ========================================
+### 4. TEST WITH ALL FIELDS
+### ========================================
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Test Lengkap",
+  "message": "Test dengan semua field",
+  "type": "info",
+  "priority": "high",
+  "linkUrl": "/test",
+  "targetRole": "all"
+}
+
+### ========================================
+### 5. CHECK ALL USERS (Debug)
+### ========================================
+### This will help us see if there are users in database
+GET {{baseUrl}}/users
+Authorization: Bearer {{token}}
+
+### ========================================
+### 6. GET MY NOTIFICATIONS
+### ========================================
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{token}}
+
+### ========================================
+### 7. TEST BROADCAST TO PETUGAS
+### ========================================
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Test untuk Petugas",
+  "message": "Hanya untuk role Petugas",
+  "type": "reminder",
+  "priority": "medium",
+  "targetRole": "Petugas"
+}
+
+### ========================================
+### EXPECTED ERRORS & SOLUTIONS
+### ========================================
+
+### Error 1: "Priority" cannot be null
+### Solution: Run SQL script to update existing records
+### File: Scripts/FixNotificationPriority.sql
+
+### Error 2: "An error occurred while saving the entity changes"
+### Solution: Check if Priority field exists in database
+### Run: dotnet ef database update
+
+### Error 3: "Tidak ada user yang menjadi target"
+### Solution: Make sure there are users in database with the target role

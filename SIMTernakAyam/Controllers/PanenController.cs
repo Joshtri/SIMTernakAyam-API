@@ -194,5 +194,94 @@ namespace SIMTernakAyam.Controllers
                 return HandleException(ex);
             }
         }
+
+        /// <summary>
+        /// Mendapatkan analisis keuntungan untuk panen tertentu
+        /// </summary>
+        /// <param name="id">ID panen</param>
+        /// <returns>Detail analisis keuntungan</returns>
+        [HttpGet("{id}/analisis-keuntungan")]
+        [ProducesResponseType(typeof(Common.ApiResponse<AnalisisKeuntunganDto>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetAnalisisKeuntungan(Guid id)
+        {
+            try
+            {
+                var analisis = await _panenService.GetAnalisisKeuntunganAsync(id);
+                if (analisis == null)
+                {
+                    return NotFound("Panen tidak ditemukan atau belum ada harga pasar yang tersedia.");
+                }
+
+                return Success(analisis, "Berhasil mengambil analisis keuntungan panen.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Mendapatkan analisis keuntungan untuk beberapa panen dalam periode tertentu
+        /// </summary>
+        /// <param name="startDate">Tanggal mulai (format: yyyy-MM-dd)</param>
+        /// <param name="endDate">Tanggal akhir (format: yyyy-MM-dd)</param>
+        /// <param name="kandangId">ID kandang (opsional)</param>
+        /// <returns>List analisis keuntungan</returns>
+        [HttpGet("analisis-keuntungan")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<AnalisisKeuntunganDto>>), 200)]
+        public async Task<IActionResult> GetAnalisisKeuntunganByPeriod(
+            [FromQuery] DateTime startDate, 
+            [FromQuery] DateTime endDate, 
+            [FromQuery] Guid? kandangId = null)
+        {
+            try
+            {
+                if (startDate > endDate)
+                {
+                    return Error("Tanggal mulai tidak boleh lebih besar dari tanggal akhir.", 400);
+                }
+
+                var analisisList = await _panenService.GetAnalisisKeuntunganByPeriodAsync(startDate, endDate, kandangId);
+                
+                var message = kandangId.HasValue 
+                    ? $"Berhasil mengambil analisis keuntungan untuk kandang tertentu dari {startDate:dd/MM/yyyy} sampai {endDate:dd/MM/yyyy}."
+                    : $"Berhasil mengambil analisis keuntungan dari {startDate:dd/MM/yyyy} sampai {endDate:dd/MM/yyyy}.";
+
+                return Success(analisisList, message);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Mendapatkan ringkasan keuntungan dalam periode tertentu
+        /// </summary>
+        /// <param name="startDate">Tanggal mulai (format: yyyy-MM-dd)</param>
+        /// <param name="endDate">Tanggal akhir (format: yyyy-MM-dd)</param>
+        /// <returns>Ringkasan keuntungan</returns>
+        [HttpGet("ringkasan-keuntungan")]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 200)]
+        public async Task<IActionResult> GetRingkasanKeuntungan(
+            [FromQuery] DateTime startDate, 
+            [FromQuery] DateTime endDate)
+        {
+            try
+            {
+                if (startDate > endDate)
+                {
+                    return Error("Tanggal mulai tidak boleh lebih besar dari tanggal akhir.", 400);
+                }
+
+                var ringkasan = await _panenService.GetRingkasanKeuntunganAsync(startDate, endDate);
+                return Success(ringkasan, $"Berhasil mengambil ringkasan keuntungan dari {startDate:dd/MM/yyyy} sampai {endDate:dd/MM/yyyy}.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
     }
 }

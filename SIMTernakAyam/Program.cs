@@ -82,6 +82,7 @@ builder.Services.AddScoped<IAyamRepository, AyamRepository>();
 builder.Services.AddScoped<IKandangAsistenRepository, KandangAsistenRepository>();
 builder.Services.AddScoped<IJurnalHarianRepository, JurnalHarianRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IHargaPasarRepository, HargaPasarRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -100,6 +101,7 @@ builder.Services.AddScoped<IKandangAsistenService, KandangAsistenService>();
 builder.Services.AddScoped<IChartService, ChartService>();
 builder.Services.AddScoped<IJurnalHarianService, JurnalHarianService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IHargaPasarService, HargaPasarService>();
 
 // Controller & JSON Config
 builder.Services.AddControllers(options =>
@@ -210,7 +212,8 @@ app.MapGet("/api", () => Results.Ok(new
         Kandang = "/api/kandang",
         Panen = "/api/panen",
         Vaksin = "/api/vaksin",
-        Ayam = "/api/ayam"
+        Ayam = "/api/ayam",
+        HargaPasar = "/api/harga-pasar"
         // Tambahkan lainnya jika perlu
     }
 }))

@@ -80,6 +80,46 @@ namespace SIMTernakAyam.Controllers
         }
 
         /// <summary>
+        /// POST /api/notifications/broadcast - Broadcast notifikasi ke semua user atau role tertentu
+        /// </summary>
+        [HttpPost("broadcast")]
+        [Authorize(Roles = "Pemilik,Operator")] // Hanya admin/operator yang bisa broadcast
+        public async Task<IActionResult> BroadcastNotification([FromBody] BroadcastNotificationDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                var senderId = GetCurrentUserId();
+                var (success, message, notificationsSent) = await _notificationService.BroadcastNotificationAsync(dto, senderId);
+
+                if (!success)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = message
+                    });
+                }
+
+                return Success(new
+                {
+                    notificationsSent = notificationsSent,
+                    targetRole = dto.TargetRole ?? "all",
+                    title = dto.Title,
+                    message = dto.Message
+                }, message, 201);
+            }
+            catch (Exception ex)
+            {
+                return Error(ex.Message);
+            }
+        }
+
+        /// <summary>
         /// PUT /api/notifications/{id}/read - Tandai notifikasi sebagai sudah dibaca
         /// </summary>
         [HttpPut("{id}/read")]

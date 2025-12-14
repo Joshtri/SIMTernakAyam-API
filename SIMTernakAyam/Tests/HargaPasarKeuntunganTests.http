@@ -1,0 +1,557 @@
+File: SIMTernakAyam\Tests\HargaPasarKeuntunganTests.http
+````````
+### API Testing untuk HargaPasar dan Analisis Keuntungan
+### Pastikan server berjalan di http://localhost:5263 atau sesuaikan port
+
+### 1. LOGIN ADMIN untuk mendapatkan token
+POST http://localhost:5263/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### Response akan berisi accessToken, copy token tersebut untuk digunakan di request berikutnya
+
+### ================================================
+### TESTING ENDPOINT KEUNTUNGAN BARU
+### ================================================
+
+### 2. GET Harga Pasar Terbaru (Aktif)
+GET http://localhost:5263/api/harga_pasar/terbaru
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 3. Hitung Estimasi Keuntungan Berdasarkan Simulasi
+### Contoh: 1000 ekor ayam dengan berat rata-rata 1.5 kg
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=1000&beratRataRata=1.5&tanggalPanen=2024-12-14
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 4. Hitung Estimasi Keuntungan dengan Parameter Berbeda
+### Contoh: 500 ekor ayam dengan berat rata-rata 1.8 kg
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=500&beratRataRata=1.8&tanggalPanen=2024-12-01
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 5. Hitung Keuntungan dari Data Panen yang Sudah Ada
+### Ganti {{panen_id}} dengan ID panen yang valid
+GET http://localhost:5263/api/harga_pasar/keuntungan-panen/{{panen_id}}
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### LAPORAN KEUNTUNGAN - PERIODE CUSTOM
+### ================================================
+
+### 6. Laporan Keuntungan dalam Periode Tertentu
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 7. Laporan Keuntungan Periode Spesifik
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan?startDate=2024-12-01&endDate=2024-12-31
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### LAPORAN KEUNTUNGAN - BULANAN ??
+### ================================================
+
+### 8. Laporan Keuntungan Bulan Ini (default)
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan-bulanan
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 9. Laporan Keuntungan Bulan Desember 2024
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan-bulanan?tahun=2024&bulan=12
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 10. Laporan Keuntungan Bulan November 2024
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan-bulanan?tahun=2024&bulan=11
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### LAPORAN KEUNTUNGAN - MINGGUAN ??
+### ================================================
+
+### 11. Laporan Keuntungan Minggu Ini (default)
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan-mingguan
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 12. Laporan Keuntungan Minggu ke-50 Tahun 2024
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan-mingguan?tahun=2024&mingguKe=50
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 13. Laporan Keuntungan Minggu ke-49 Tahun 2024
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan-mingguan?tahun=2024&mingguKe=49
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### RINGKASAN KEUNTUNGAN - TAHUNAN ??
+### ================================================
+
+### 14. Ringkasan Keuntungan Tahun Ini (default)
+GET http://localhost:5263/api/harga_pasar/ringkasan-keuntungan-tahunan
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 15. Ringkasan Keuntungan Tahun 2024
+GET http://localhost:5263/api/harga_pasar/ringkasan-keuntungan-tahunan?tahun=2024
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 16. Ringkasan Keuntungan Tahun 2023
+GET http://localhost:5263/api/harga_pasar/ringkasan-keuntungan-tahunan?tahun=2023
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### VALIDATION TESTS - ENDPOINT KEUNTUNGAN
+### ================================================
+
+### 17. Test Parameter Invalid - Total Ayam Negatif
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=-100&beratRataRata=1.5
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 18. Test Parameter Invalid - Berat Rata-rata Negatif
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=1000&beratRataRata=-1.5
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 19. Test Tanggal Tidak Ada Harga Pasar Aktif
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=1000&beratRataRata=1.5&tanggalPanen=2020-01-01
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### CRUD HARGA PASAR
+### ================================================
+
+### 20. CREATE Harga Pasar Baru
+POST http://localhost:5263/api/harga_pasar
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "hargaPerKg": 27000,
+  "tanggalMulai": "2024-12-14T00:00:00Z",
+  "tanggalBerakhir": null,
+  "keterangan": "Harga pasar ayam broiler Desember 2024",
+  "wilayah": "Jakarta",
+  "autoDeactivatePrevious": true
+}
+
+### 21. GET All Harga Pasar
+GET http://localhost:5263/api/harga_pasar
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 22. GET Harga Pasar by ID
+GET http://localhost:5263/api/harga_pasar/{{harga_id}}
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 23. GET Harga Pasar by Tanggal
+GET http://localhost:5263/api/harga_pasar/by-tanggal?tanggal=2024-12-14
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 24. GET Riwayat Harga Pasar
+GET http://localhost:5263/api/harga_pasar/riwayat?startDate=2024-11-01&endDate=2024-12-31
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 25. UPDATE Harga Pasar
+PUT http://localhost:5263/api/harga_pasar/{{harga_id}}
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "hargaPerKg": 28000,
+  "tanggalMulai": "2024-12-14T00:00:00Z",
+  "tanggalBerakhir": "2024-12-31T23:59:59Z",
+  "keterangan": "Harga pasar ayam broiler Desember 2024 - Updated",
+  "wilayah": "Jakarta",
+  "isAktif": true
+}
+
+### 26. UPDATE Status Harga Pasar (Test Validasi Single Active)
+PUT http://localhost:5263/api/harga_pasar/{{harga_id}}/status?isAktif=true
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 27. DEACTIVATE All Harga Pasar
+POST http://localhost:5263/api/harga_pasar/deactivate-all
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 28. DELETE Harga Pasar
+DELETE http://localhost:5263/api/harga_pasar/{{harga_id}}
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### TESTING INTEGRATION DENGAN DATA PANEN
+### ================================================
+
+### 29. Check existing Panen data untuk testing
+GET http://localhost:5263/api/panen
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 30. Check existing Kandang data
+GET http://localhost:5263/api/kandang
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### 31. Check existing Ayam data
+GET http://localhost:5263/api/ayam
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### COMPLETE SCENARIO TEST
+### ================================================
+
+### Scenario 1: Setup Harga Pasar untuk Testing Keuntungan
+POST http://localhost:5263/api/harga_pasar
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "hargaPerKg": 25000,
+  "tanggalMulai": "2024-11-01T00:00:00Z",
+  "tanggalBerakhir": "2024-11-30T23:59:59Z",
+  "keterangan": "Harga November untuk testing",
+  "wilayah": "Indonesia",
+  "autoDeactivatePrevious": false
+}
+
+### Scenario 2: Setup Harga Pasar Aktif Terkini
+POST http://localhost:5263/api/harga_pasar
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "hargaPerKg": 26000,
+  "tanggalMulai": "2024-12-01T00:00:00Z",
+  "tanggalBerakhir": null,
+  "keterangan": "Harga aktif Desember",
+  "wilayah": "Indonesia",
+  "autoDeactivatePrevious": true
+}
+
+### Scenario 3: Test Keuntungan dengan Harga Pasar Baru
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=1200&beratRataRata=1.7&tanggalPanen=2024-12-14
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### PERFORMANCE & EDGE CASES
+### ================================================
+
+### Edge Case 1: Zero values
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=0&beratRataRata=1.5
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Edge Case 2: Very large numbers
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=999999&beratRataRata=3.0&tanggalPanen=2024-12-14
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Edge Case 3: Invalid Panen ID
+GET http://localhost:5263/api/harga_pasar/keuntungan-panen/00000000-0000-0000-0000-000000000000
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Edge Case 4: Very wide date range for laporan
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan?startDate=2020-01-01&endDate=2030-12-31
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### EXPECTED RESULTS SAMPLE
+### ================================================
+
+### Expected Response untuk hitung-keuntungan:
+# {
+#   "success": true,
+#   "message": "Estimasi keuntungan berhasil dihitung",
+#   "data": {
+#     "totalAyam": 1000,
+#     "beratRataRata": 1.5,
+#     "totalBerat": 1500.0,
+#     "hargaPerKg": 26000,
+#     "totalPendapatan": 39000000,
+#     "tanggalReferensi": "2024-12-14T00:00:00",
+#     "hargaPasarInfo": {
+#       "id": "guid-here",
+#       "hargaPerKg": 26000,
+#       "tanggalMulai": "2024-12-01T00:00:00",
+#       "tanggalBerakhir": null,
+#       "wilayah": "Indonesia",
+#       "keterangan": "Harga aktif Desember"
+#     }
+#   }
+# }
+
+### ? Expected Response untuk laporan-keuntungan-bulanan:
+# {
+#   "success": true,
+#   "message": "Laporan keuntungan bulan 12/2024 berhasil diambil",
+#   "data": {
+#     "tahun": 2024,
+#     "bulan": 12,
+#     "namaBulan": "Desember",
+#     "periode": {
+#       "tanggalMulai": "2024-12-01T00:00:00",
+#       "tanggalAkhir": "2024-12-31T00:00:00",
+#       "jumlahHari": 31
+#     },
+#     "total": {
+#       "totalPanen": 15,
+#       "totalAyam": 5000,
+#       "totalBerat": 7500.0,
+#       "totalPendapatan": 195000000,
+#       "rataRataBeratPerEkor": 1.5
+#     },
+#     "detailHarian": [
+#       {
+#         "tanggal": "2024-12-01T00:00:00",
+#         "jumlahPanen": 2,
+#         "totalAyam": 500,
+#         "totalBerat": 750.0,
+#         "totalKeuntungan": 19500000,
+#         "hargaPerKg": 26000,
+#         "detailPanen": [
+#           {
+#             "panenId": "guid-here",
+#             "tanggalPanen": "2024-12-01T00:00:00",
+#             "jumlahAyam": 250,
+#             "totalBerat": 375.0,
+#             "beratRataRata": 1.5,
+#             "hargaPerKg": 26000,
+#             "totalPendapatan": 9750000,
+#             "namaKandang": "Kandang A1",
+#             "hargaPasarInfo": {
+#               "id": "guid-here",
+#               "hargaPerKg": 26000,
+#               "tanggalMulai": "2024-12-01T00:00:00",
+#               "tanggalBerakhir": null,
+#               "wilayah": "Jakarta",
+#               "keterangan": "Harga Desember 2024"
+#             }
+#           }
+#         ]
+#       }
+#     ],
+#     "perbandinganBulanSebelumnya": {
+#       "bulanSebelumnya": "11/2024",
+#       "totalKeuntunganSebelumnya": 180000000,
+#       "selisihKeuntungan": 15000000,
+#       "persentasePerubahan": 8.33,
+#       "statusPerubahan": "Naik"
+#     },
+#     "hargaPasarBulanIni": [
+#       {
+#         "id": "guid-here",
+#         "hargaPerKg": 26000,
+#         "tanggalMulai": "2024-12-01T00:00:00",
+#         "tanggalBerakhir": null,
+#         "wilayah": "Jakarta",
+#         "keterangan": "Harga Desember 2024"
+#       }
+#     ],
+#     "rataRataHargaPerKg": 26000,
+#     "fluktusiHarga": {
+#       "hargaTerendah": 25000,
+#       "hargaTertinggi": 27000,
+#       "selisihHarga": 2000,
+#       "persentaseFluktuasi": 8.0
+#     }
+#   }
+# }
+
+### ? Expected Response untuk ringkasan-keuntungan-tahunan:
+# {
+#   "success": true,
+#   "message": "Ringkasan keuntungan tahun 2024 berhasil diambil",
+#   "data": {
+#     "tahun": 2024,
+#     "totalTahunan": {
+#       "totalPanen": 180,
+#       "totalAyam": 50000,
+#       "totalBerat": 75000.0,
+#       "totalPendapatan": 1950000000,
+#       "rataRataBeratPerEkor": 1.5
+#     },
+#     "breakdownBulanan": [
+#       {
+#         "bulan": 1,
+#         "namaBulan": "Januari",
+#         "totalKeuntungan": 160000000,
+#         "totalAyam": 4000,
+#         "totalBerat": 6000.0,
+#         "jumlahHariPanen": 15,
+#         "rataRataHargaPerKg": 25000
+#       },
+#       {
+#         "bulan": 2,
+#         "namaBulan": "Februari",
+#         "totalKeuntungan": 155000000,
+#         "totalAyam": 3800,
+#         "totalBerat": 5700.0,
+#         "jumlahHariPanen": 14,
+#         "rataRataHargaPerKg": 25500
+#       }
+#     ],
+#     "bulanTerbaik": {
+#       "bulan": 12,
+#       "namaBulan": "Desember",
+#       "totalKeuntungan": 195000000,
+#       "totalAyam": 5000,
+#       "totalBerat": 7500.0,
+#       "jumlahHariPanen": 20,
+#       "rataRataHargaPerKg": 26000
+#     },
+#     "bulanTerburuk": {
+#       "bulan": 3,
+#       "namaBulan": "Maret",
+#       "totalKeuntungan": 145000000,
+#       "totalAyam": 3500,
+#       "totalBerat": 5250.0,
+#       "jumlahHariPanen": 12,
+#       "rataRataHargaPerKg": 24500
+#     },
+#     "rataRataKeuntunganPerBulan": 162500000,
+#     "trendTahunan": "Naik",
+#     "fluktusiHargaTahunan": {
+#       "hargaTerendah": 23000,
+#       "hargaTertinggi": 28000,
+#       "selisihHarga": 5000,
+#       "persentaseFluktuasi": 21.74
+#     }
+#   }
+# }
+
+### ================================================
+### ?? DEBUG ENDPOINTS - TROUBLESHOOTING
+### ================================================
+
+### DEBUG 1: Cek harga pasar yang tersedia untuk tanggal 2025-12-10
+GET http://localhost:5263/api/harga_pasar/debug/cek-harga-pasar?tanggal=2025-12-10
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### DEBUG 2: Cek harga pasar yang tersedia untuk tanggal hari ini
+GET http://localhost:5263/api/harga_pasar/debug/cek-harga-pasar?tanggal=2024-12-14
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### DEBUG 3: Cek data panen periode Desember 2025
+GET http://localhost:5263/api/harga_pasar/debug/cek-data-panen?startDate=2025-12-01&endDate=2025-12-31
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### DEBUG 4: Cek semua harga pasar yang ada di database
+GET http://localhost:5263/api/harga_pasar
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### DEBUG 5: Cek harga pasar terbaru yang aktif
+GET http://localhost:5263/api/harga_pasar/terbaru
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### SOLUSI - BUAT HARGA PASAR UNTUK TANGGAL PANEN
+### ================================================
+
+### SOLUSI 1: Buat harga pasar untuk periode yang mencakup tanggal panen (2025-12-10)
+POST http://localhost:5263/api/harga_pasar
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "hargaPerKg": 27000,
+  "tanggalMulai": "2025-12-01T00:00:00Z",
+  "tanggalBerakhir": null,
+  "keterangan": "Harga pasar Desember 2025 untuk fix laporan keuntungan",
+  "wilayah": "Indonesia",
+  "autoDeactivatePrevious": true
+}
+
+### SOLUSI 2: Atau buat harga pasar yang berlaku mundur dari tanggal panen
+POST http://localhost:5263/api/harga_pasar
+Content-Type: application/json
+Authorization: Bearer YOUR_TOKEN_HERE
+
+{
+  "hargaPerKg": 26500,
+  "tanggalMulai": "2025-12-10T00:00:00Z",
+  "tanggalBerakhir": "2025-12-31T23:59:59Z",
+  "keterangan": "Harga pasar khusus untuk periode panen Desember 2025",
+  "wilayah": "Indonesia",
+  "autoDeactivatePrevious": true
+}
+
+### ================================================
+### TEST ULANG SETELAH SOLUSI
+### ================================================
+
+### TEST 1: Test laporan keuntungan bulanan setelah menambah harga pasar
+GET http://localhost:5263/api/harga_pasar/laporan-keuntungan-bulanan?tahun=2025&bulan=12
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### TEST 2: Test estimasi keuntungan untuk tanggal 2025-12-10
+GET http://localhost:5263/api/harga_pasar/hitung-keuntungan?totalAyam=1000&beratRataRata=2.0&tanggalPanen=2025-12-10
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### TEST 3: Test keuntungan dari panen ID yang ada
+GET http://localhost:5263/api/harga_pasar/keuntungan-panen/d7f035eb-8d42-4486-a963-d7fb7ee17206
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### ================================================
+### EXPECTED DEBUG RESULTS
+### ================================================
+
+### ? Expected Response untuk debug/cek-harga-pasar (SEBELUM SOLUSI):
+# {
+#   "success": true,
+#   "message": "Debug info harga pasar berhasil diambil",
+#   "data": {
+#     "tanggalYangDicek": "2025-12-10",
+#     "totalHargaPasarDiDatabase": 0,
+#     "hargaPasarAktifPadaTanggal": null,
+#     "hargaPasarTerbaru": null,
+#     "semuaHargaPasar": [],
+#     "rekomendasiSolusi": "? MASALAH: Tidak ada harga pasar aktif pada tanggal ini. Buat harga pasar baru atau aktifkan yang sudah ada."
+#   }
+# }
+
+### ? Expected Response untuk debug/cek-harga-pasar (SETELAH SOLUSI):
+# {
+#   "success": true,
+#   "message": "Debug info harga pasar berhasil diambil",
+#   "data": {
+#     "tanggalYangDicek": "2025-12-10",
+#     "totalHargaPasarDiDatabase": 1,
+#     "hargaPasarAktifPadaTanggal": {
+#       "id": "guid-here",
+#       "hargaPerKg": 27000,
+#       "tanggalMulai": "2025-12-01T00:00:00",
+#       "tanggalBerakhir": null,
+#       "isAktif": true,
+#       "wilayah": "Indonesia",
+#       "keterangan": "Harga pasar Desember 2025 untuk fix laporan keuntungan"
+#     },
+#     "rekomendasiSolusi": "? OK: Ada harga pasar aktif pada tanggal ini."
+#   }
+# }
+
+### ? Expected Response untuk laporan-keuntungan-bulanan (SETELAH SOLUSI):
+# {
+#   "success": true,
+#   "message": "Laporan keuntungan bulan 12/2025 berhasil dibuat. DEBUG: Ditemukan 3 panen dalam periode 2025-12-01 to 2025-12-31.",
+#   "data": {
+#     "tahun": 2025,
+#     "bulan": 12,
+#     "namaBulan": "Desember",
+#     "total": {
+#       "totalPanen": 3,
+#       "totalAyam": 2962,
+#       "totalBerat": 6142.2,
+#       "totalPendapatan": 165839400,
+#       "rataRataBeratPerEkor": 2.07
+#     },
+#     "detailHarian": [
+#       {
+#         "tanggal": "2025-12-10T00:00:00",
+#         "jumlahPanen": 3,
+#         "totalAyam": 2962,
+#         "totalBerat": 6142.2,
+#         "totalKeuntungan": 165839400,
+#         "hargaPerKg": 27000,
+#         "detailPanen": [
+#           {
+#             "panenId": "d7f035eb-8d42-4486-a963-d7fb7ee17206",
+#             "jumlahAyam": 990,
+#             "totalBerat": 2079.0,
+#             "totalPendapatan": 56133000
+#           }
+#         ]
+#       }
+#     ]
+#   }
+# }

@@ -5,7 +5,9 @@ namespace SIMTernakAyam.Models
         public Guid UserId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty; // "info", "warning", "danger", "success"
+        public string Type { get; set; } = string.Empty; // "info", "warning", "danger", "success", "error", "reminder", "system", "message"
+        public string Priority { get; set; } = "medium"; // "low", "medium", "high", "urgent"
+        public string? LinkUrl { get; set; } // Optional URL untuk link ke detail
         public bool IsRead { get; set; } = false;
         public DateTime? ReadAt { get; set; }
 
@@ -13,4 +15,3 @@ namespace SIMTernakAyam.Models
         public User? User { get; set; }
     }
 }
-        

@@ -1,0 +1,433 @@
+### ========================================
+### NOTIFICATION BROADCAST API TESTS
+### ========================================
+### Base URL
+@baseUrl = https://localhost:7195/api
+@token = YOUR_TOKEN_HERE
+
+### ========================================
+### 1. LOGIN - Get Token First
+### ========================================
+### Login as Pemilik/Operator (required for broadcast)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### Response will contain accessToken, copy it to @token variable above
+
+### ========================================
+### 2. BROADCAST NOTIFICATION - ALL USERS
+### ========================================
+### Broadcast to ALL users (semua pengguna)
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Pengumuman Penting",
+  "message": "Sistem akan maintenance pada hari Minggu, 15 Desember 2024 pukul 22:00 - 23:00 WIB",
+  "type": "info",
+  "priority": "high",
+  "linkUrl": null,
+  "targetRole": "all"
+}
+
+### ========================================
+### 3. BROADCAST TO SPECIFIC ROLE
+### ========================================
+
+### 3.1 Broadcast to Petugas only
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Reminder untuk Petugas",
+  "message": "Jangan lupa melakukan pengecekan kandang setiap pagi",
+  "type": "reminder",
+  "priority": "medium",
+  "linkUrl": "/kandang",
+  "targetRole": "Petugas"
+}
+
+### 3.2 Broadcast to Operator only
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Update Sistem",
+  "message": "Fitur laporan keuntungan baru telah ditambahkan ke sistem",
+  "type": "info",
+  "priority": "low",
+  "linkUrl": "/laporan/keuntungan",
+  "targetRole": "Operator"
+}
+
+### 3.3 Broadcast to Pemilik only
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Laporan Bulanan Tersedia",
+  "message": "Laporan keuntungan bulan November 2024 sudah dapat dilihat",
+  "type": "success",
+  "priority": "high",
+  "linkUrl": "/laporan/bulanan?bulan=11&tahun=2024",
+  "targetRole": "Pemilik"
+}
+
+### ========================================
+### 4. BROADCAST WITH DIFFERENT TYPES
+### ========================================
+
+### 4.1 Info Type
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Informasi",
+  "message": "Harga pakan ayam mengalami kenaikan 5% mulai bulan depan",
+  "type": "info",
+  "priority": "medium",
+  "targetRole": "all"
+}
+
+### 4.2 Warning Type
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Peringatan Stok",
+  "message": "Stok pakan di gudang tinggal 10%, segera lakukan pemesanan",
+  "type": "warning",
+  "priority": "high",
+  "linkUrl": "/pakan",
+  "targetRole": "Operator"
+}
+
+### 4.3 Error/Urgent Type
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "URGENT: Wabah Penyakit",
+  "message": "Ditemukan gejala penyakit Newcastle di Kandang A3, segera lakukan isolasi!",
+  "type": "error",
+  "priority": "urgent",
+  "linkUrl": "/kandang/a3",
+  "targetRole": "all"
+}
+
+### 4.4 Success Type
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Pencapaian Target",
+  "message": "Selamat! Target panen bulan ini tercapai 120% dari target",
+  "type": "success",
+  "priority": "low",
+  "targetRole": "all"
+}
+
+### ========================================
+### 5. BROADCAST WITH DIFFERENT PRIORITIES
+### ========================================
+
+### 5.1 Low Priority
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Tips Harian",
+  "message": "Pastikan ventilasi kandang selalu baik untuk kesehatan ayam",
+  "type": "info",
+  "priority": "low",
+  "targetRole": "Petugas"
+}
+
+### 5.2 Medium Priority
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Jadwal Vaksinasi",
+  "message": "Jadwal vaksinasi minggu depan: Senin (Kandang A), Rabu (Kandang B)",
+  "type": "reminder",
+  "priority": "medium",
+  "linkUrl": "/vaksin",
+  "targetRole": "Petugas"
+}
+
+### 5.3 High Priority
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Meeting Penting",
+  "message": "Meeting evaluasi bulanan besok pukul 10:00 di kantor pusat",
+  "type": "info",
+  "priority": "high",
+  "targetRole": "all"
+}
+
+### 5.4 Urgent Priority
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "DARURAT: Kebocoran Atap",
+  "message": "Atap kandang B2 bocor parah, ayam basah kuyup! Segera tangani!",
+  "type": "error",
+  "priority": "urgent",
+  "linkUrl": "/kandang/b2",
+  "targetRole": "all"
+}
+
+### ========================================
+### 6. GET USER NOTIFICATIONS
+### ========================================
+### After broadcasting, check if users received the notification
+GET {{baseUrl}}/notifications?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### ========================================
+### 7. GET UNREAD COUNT
+### ========================================
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{token}}
+
+### ========================================
+### 8. MARK AS READ
+### ========================================
+### Replace {notification_id} with actual ID from GET notifications
+PUT {{baseUrl}}/notifications/{notification_id}/read
+Authorization: Bearer {{token}}
+
+### ========================================
+### 9. DELETE NOTIFICATION
+### ========================================
+DELETE {{baseUrl}}/notifications/{notification_id}
+Authorization: Bearer {{token}}
+
+### ========================================
+### 10. VALIDATION TESTS
+### ========================================
+
+### 10.1 Invalid Type
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Test",
+  "message": "Test message",
+  "type": "invalid_type",
+  "priority": "medium",
+  "targetRole": "all"
+}
+
+### 10.2 Missing Title (should fail validation)
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "message": "Test message without title",
+  "type": "info",
+  "priority": "medium",
+  "targetRole": "all"
+}
+
+### 10.3 Missing Message (should fail validation)
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Test",
+  "type": "info",
+  "priority": "medium",
+  "targetRole": "all"
+}
+
+### 10.4 Empty Target Role (should default to "all")
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Test Empty Target",
+  "message": "This should go to all users",
+  "type": "info",
+  "priority": "medium"
+}
+
+### ========================================
+### 11. AUTHORIZATION TESTS
+### ========================================
+
+### 11.1 Try broadcast without token (should fail)
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+
+{
+  "title": "Unauthorized Test",
+  "message": "This should fail",
+  "type": "info",
+  "priority": "medium",
+  "targetRole": "all"
+}
+
+### 11.2 Try broadcast with Petugas role (should fail - only Pemilik/Operator allowed)
+### First login as Petugas
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "petugas1",
+  "password": "petugas123"
+}
+
+### Then try to broadcast (should fail)
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer YOUR_PETUGAS_TOKEN_HERE
+
+{
+  "title": "Test Petugas Broadcast",
+  "message": "This should fail because Petugas cannot broadcast",
+  "type": "info",
+  "priority": "medium",
+  "targetRole": "all"
+}
+
+### ========================================
+### 12. REAL-WORLD SCENARIOS
+### ========================================
+
+### Scenario 1: Pengumuman Libur
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "?? Pengumuman Libur Nasional",
+  "message": "Tanggal 17 Desember 2024 adalah hari libur nasional. Petugas shift jaga tetap bertugas.",
+  "type": "info",
+  "priority": "high",
+  "targetRole": "all"
+}
+
+### Scenario 2: Update Harga Pasar
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "?? Update Harga Pasar Ayam",
+  "message": "Harga pasar ayam broiler naik menjadi Rp 28.000/kg per hari ini",
+  "type": "success",
+  "priority": "high",
+  "linkUrl": "/harga-pasar",
+  "targetRole": "all"
+}
+
+### Scenario 3: Reminder Pembersihan Kandang
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "?? Reminder: Jadwal Pembersihan",
+  "message": "Hari ini jadwal pembersihan menyeluruh semua kandang. Pastikan selesai sebelum sore.",
+  "type": "reminder",
+  "priority": "medium",
+  "linkUrl": "/operasional",
+  "targetRole": "Petugas"
+}
+
+### Scenario 4: Laporan Mortalitas Tinggi
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "?? Alert: Mortalitas Tinggi",
+  "message": "Mortalitas di Kandang C mencapai 5% minggu ini. Segera lakukan pengecekan kesehatan ayam!",
+  "type": "warning",
+  "priority": "urgent",
+  "linkUrl": "/mortalitas",
+  "targetRole": "all"
+}
+
+### Scenario 5: Congratulations Panen Besar
+POST {{baseUrl}}/notifications/broadcast
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "?? Selamat! Panen Besar Hari Ini",
+  "message": "Total panen hari ini mencapai 3,000 ekor dengan berat rata-rata 2.1 kg. Excellent work team!",
+  "type": "success",
+  "priority": "low",
+  "linkUrl": "/panen",
+  "targetRole": "all"
+}
+
+### ========================================
+### EXPECTED RESPONSES
+### ========================================
+
+### ? Success Response:
+# {
+#   "success": true,
+#   "message": "Notifikasi berhasil dikirim ke 15 pengguna (semua pengguna)",
+#   "data": {
+#     "notificationsSent": 15,
+#     "targetRole": "all",
+#     "title": "Pengumuman Penting",
+#     "message": "Sistem akan maintenance..."
+#   },
+#   "errors": null,
+#   "statusCode": 201,
+#   "timestamp": "2024-12-14T10:30:00"
+# }
+
+### ? Validation Error Response:
+# {
+#   "success": false,
+#   "message": "Validation failed",
+#   "errors": {
+#     "Title": ["Title harus diisi"]
+#   },
+#   "statusCode": 400
+# }
+
+### ? Authorization Error Response:
+# {
+#   "success": false,
+#   "message": "Unauthorized",
+#   "statusCode": 401
+# }
+
+### ? Forbidden Error (wrong role):
+# {
+#   "success": false,
+#   "message": "Forbidden",
+#   "statusCode": 403
+# }

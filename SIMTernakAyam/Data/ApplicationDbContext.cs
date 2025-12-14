@@ -26,6 +26,7 @@ namespace SIMTernakAyam.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<KandangAsisten> KandangAsistens { get; set; }
         public DbSet<JurnalHarian> JurnalHarians { get; set; }
+        public DbSet<HargaPasar> HargaPasar { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -154,6 +155,44 @@ namespace SIMTernakAyam.Data
             modelBuilder.Entity<Pakan>()
                 .Property(p => p.StokKg)
                 .HasPrecision(18, 2);
+
+            // Konfigurasi untuk HargaPasar
+            modelBuilder.Entity<HargaPasar>()
+                .Property(h => h.HargaPerKg)
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            modelBuilder.Entity<HargaPasar>()
+                .Property(h => h.TanggalMulai)
+                .IsRequired();
+
+            modelBuilder.Entity<HargaPasar>()
+                .Property(h => h.TanggalBerakhir)
+                .IsRequired(false);
+
+            modelBuilder.Entity<HargaPasar>()
+                .Property(h => h.Keterangan)
+                .HasMaxLength(500)
+                .IsRequired(false);
+
+            modelBuilder.Entity<HargaPasar>()
+                .Property(h => h.Wilayah)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            modelBuilder.Entity<HargaPasar>()
+                .Property(h => h.IsAktif)
+                .IsRequired()
+                .HasDefaultValue(true);
+
+            // Index untuk performa query HargaPasar
+            modelBuilder.Entity<HargaPasar>()
+                .HasIndex(h => new { h.IsAktif, h.TanggalMulai, h.TanggalBerakhir })
+                .HasDatabaseName("IX_HargaPasar_Period");
+
+            modelBuilder.Entity<HargaPasar>()
+                .HasIndex(h => new { h.Wilayah, h.IsAktif })
+                .HasDatabaseName("IX_HargaPasar_Wilayah");
 
             // Relasi User -> Notification (One-to-Many)
             modelBuilder.Entity<Notification>()

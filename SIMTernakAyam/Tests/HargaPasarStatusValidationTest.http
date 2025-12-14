@@ -1,0 +1,87 @@
+### Test Harga Pasar Status Validation
+### Memastikan hanya boleh ada satu harga pasar yang aktif
+
+@baseUrl = https://localhost:7195
+@token = PUT_YOUR_JWT_TOKEN_HERE
+
+###
+# 1. Login untuk mendapatkan token (jika diperlukan)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "admin@example.com",
+    "password": "Admin123!"
+}
+
+###
+# 2. Buat harga pasar pertama
+POST {{baseUrl}}/api/harga_pasar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "hargaPerKg": 25000,
+    "tanggalMulai": "2024-01-01",
+    "tanggalBerakhir": null,
+    "keterangan": "Harga Pasar Januari 2024",
+    "wilayah": "Jakarta",
+    "autoDeactivatePrevious": false
+}
+
+###
+# 3. Buat harga pasar kedua  
+POST {{baseUrl}}/api/harga_pasar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "hargaPerKg": 26000,
+    "tanggalMulai": "2024-02-01", 
+    "tanggalBerakhir": null,
+    "keterangan": "Harga Pasar Februari 2024",
+    "wilayah": "Jakarta",
+    "autoDeactivatePrevious": false
+}
+
+###
+# 4. Lihat semua harga pasar untuk mendapatkan ID
+GET {{baseUrl}}/api/harga_pasar
+Authorization: Bearer {{token}}
+
+###
+# 5. Coba aktifkan harga pasar kedua (seharusnya GAGAL jika sudah ada yang aktif)
+# Ganti dengan ID yang didapat dari step 4
+PUT {{baseUrl}}/api/harga_pasar/REPLACE_WITH_ID_FROM_STEP4/status?isAktif=true
+Authorization: Bearer {{token}}
+
+###
+# 6. Test nonaktifkan harga pasar pertama
+PUT {{baseUrl}}/api/harga_pasar/REPLACE_WITH_FIRST_ID/status?isAktif=false
+Authorization: Bearer {{token}}
+
+###
+# 7. Sekarang coba aktifkan harga pasar kedua (seharusnya BERHASIL)
+PUT {{baseUrl}}/api/harga_pasar/REPLACE_WITH_SECOND_ID/status?isAktif=true
+Authorization: Bearer {{token}}
+
+###
+# 8. Coba aktifkan harga pasar pertama lagi (seharusnya GAGAL karena yang kedua aktif)
+PUT {{baseUrl}}/api/harga_pasar/REPLACE_WITH_FIRST_ID/status?isAktif=true
+Authorization: Bearer {{token}}
+
+###
+# 9. Test deactivate all (untuk reset)
+POST {{baseUrl}}/api/harga_pasar/deactivate-all
+Authorization: Bearer {{token}}
+
+###
+# 10. Verifikasi semua sudah nonaktif
+GET {{baseUrl}}/api/harga_pasar
+Authorization: Bearer {{token}}
+
+###
+# EXPECTED RESULTS:
+# - Step 5: Harus GAGAL dengan error message tentang sudah ada harga aktif
+# - Step 7: Harus BERHASIL karena tidak ada konflik
+# - Step 8: Harus GAGAL dengan error message tentang sudah ada harga aktif

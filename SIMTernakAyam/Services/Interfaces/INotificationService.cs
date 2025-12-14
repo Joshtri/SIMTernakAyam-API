@@ -15,6 +15,11 @@ namespace SIMTernakAyam.Services.Interfaces
         Task<NotificationResponseDto?> MarkAsReadAsync(Guid id, Guid userId);
         Task<int> GetUnreadCountAsync(Guid userId);
 
+        // Broadcast notification to all users or specific role
+        Task<(bool Success, string Message, int NotificationsSent)> BroadcastNotificationAsync(
+            BroadcastNotificationDto dto, 
+            Guid senderId);
+
         // Auto-notification helpers
         Task NotifyAyamAddedAsync(Guid petugasId, string petugasName, string kandangName, int jumlahAyam, Guid kandangId);
         Task NotifyMortalitasAsync(Guid petugasId, string petugasName, string kandangName, int jumlahMati, string penyebab, Guid kandangId);
