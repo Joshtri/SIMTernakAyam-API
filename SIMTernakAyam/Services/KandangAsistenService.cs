@@ -11,15 +11,18 @@ namespace SIMTernakAyam.Services
         private readonly IKandangAsistenRepository _kandangAsistenRepository;
         private readonly IKandangRepository _kandangRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IAyamRepository _ayamRepository;
 
         public KandangAsistenService(
             IKandangAsistenRepository kandangAsistenRepository,
             IKandangRepository kandangRepository,
-            IUserRepository userRepository) : base(kandangAsistenRepository)
+            IUserRepository userRepository,
+            IAyamRepository ayamRepository) : base(kandangAsistenRepository)
         {
             _kandangAsistenRepository = kandangAsistenRepository;
             _kandangRepository = kandangRepository;
             _userRepository = userRepository;
+            _ayamRepository = ayamRepository;
         }
 
         public async Task<IEnumerable<KandangAsisten>> GetAsistensByKandangAsync(Guid kandangId)
@@ -45,6 +48,11 @@ namespace SIMTernakAyam.Services
         public async Task<IEnumerable<KandangAsisten>> GetAllWithDetailsAsync()
         {
             return await _kandangAsistenRepository.GetAllWithDetailsAsync();
+        }
+
+        public async Task<IEnumerable<Models.Ayam>> GetAyamSisaByKandangAsync(Guid kandangId)
+        {
+            return await _ayamRepository.GetAyamSisaByKandangIdAsync(kandangId);
         }
 
         protected override async Task<ValidationResult> ValidateOnCreateAsync(KandangAsisten entity)

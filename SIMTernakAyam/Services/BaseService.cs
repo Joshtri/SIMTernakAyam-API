@@ -193,41 +193,28 @@ namespace SIMTernakAyam.Services
         /// </summary>
         public virtual async Task<(bool Success, string Message)> DeleteAsync(Guid id)
         {
-            try
+            var entity = await _repository.GetByIdAsync(id);
+            if (entity == null)
             {
-                var entity = await _repository.GetByIdAsync(id);
-                if (entity == null)
-                {
-                    return (false, "Data tidak ditemukan.");
-                }
-
-                // Validasi custom sebelum delete
-                var validationResult = await ValidateOnDeleteAsync(entity);
-                if (!validationResult.IsValid)
-                {
-                    return (false, validationResult.ErrorMessage);
-                }
-
-                // Hook untuk custom logic sebelum delete
-                await BeforeDeleteAsync(entity);
-
-                _repository.Delete(entity);
-                await _repository.SaveChangesAsync();
-
-                // Hook untuk custom logic setelah delete
-                await AfterDeleteAsync(entity);
-
-                return (true, "Data berhasil dihapus.");
+                return (false, $"{typeof(T).Name} tidak ditemukan.");
             }
-            catch (Exception ex)
+
+            // Validate before delete
+            var validateResult = await ValidateOnDeleteAsync(entity);
+            if (!validateResult.IsValid)
             {
-                // Include inner exception untuk debugging
-                var errorMessage = ex.InnerException != null
-                    ? $"Terjadi kesalahan: {ex.Message}. Detail: {ex.InnerException.Message}"
-                    : $"Terjadi kesalahan: {ex.Message}";
-                return (false, errorMessage);
+                return (false, validateResult.ErrorMessage);
             }
+
+            // ⭐ HARD DELETE: Benar-benar hapus dari database
+            _repository.Delete(entity);
+            await _repository.SaveChangesAsync();
+
+            await AfterDeleteAsync(entity);
+
+            return (true, $"{typeof(T).Name} berhasil dihapus.");
         }
+
 
         /// <summary>
         /// Mengecek apakah data dengan ID tertentu ada

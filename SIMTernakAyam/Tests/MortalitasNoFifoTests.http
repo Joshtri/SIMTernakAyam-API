@@ -1,0 +1,193 @@
+### ? Test Manual Split - RECOMMENDED WAY
+### Create mortalitas dengan distribusi manual antara ayam lama dan baru
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 10,
+  "penyebabKematian": "Penyakit X - Test Manual Split",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 6,
+  "jumlahDariAyamBaru": 4
+}
+
+###
+
+### ? Test Auto FIFO - DEPRECATED (Should Return Error)
+### Method ini sudah tidak menggunakan FIFO lagi
+
+POST {{baseUrl}}/api/mortalitas/auto-fifo
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 10,
+  "penyebabKematian": "Test Auto FIFO - Should Fail"
+}
+
+# Expected Response:
+# {
+#   "status": "error",
+#   "message": "Method ini tidak menggunakan Auto FIFO lagi. Silakan gunakan CreateMortalitasManualSplitAsync untuk menentukan distribusi kematian, atau gunakan CreateAsync biasa dengan memilih AyamId secara manual. Mortalitas tidak selalu First In First Out (yang mati bisa ayam baru atau lama)."
+# }
+
+###
+
+### ? Test Auto FIFO via Mode - DEPRECATED (Should Return Error)
+### Using mode "auto-fifo" in main endpoint
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 10,
+  "penyebabKematian": "Test Auto FIFO via Mode - Should Fail",
+  "mode": "auto-fifo"
+}
+
+# Expected Response:
+# {
+#   "status": "error",
+#   "message": "Method ini tidak menggunakan Auto FIFO lagi..."
+# }
+
+###
+
+### ? Test Manual Split - All from Old Ayam
+### Semua kematian dari ayam lama (simulate FIFO behavior if needed)
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 10,
+  "penyebabKematian": "Penyakit Y - Semua dari Ayam Lama",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 10,
+  "jumlahDariAyamBaru": 0
+}
+
+###
+
+### ? Test Manual Split - All from New Ayam
+### Semua kematian dari ayam baru
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 5,
+  "penyebabKematian": "Penyakit Z - Semua dari Ayam Baru",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 0,
+  "jumlahDariAyamBaru": 5
+}
+
+###
+
+### ? Test Manual Split - With Photo (Base64)
+### Create mortalitas dengan foto bukti
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 8,
+  "penyebabKematian": "Penyakit W - With Photo",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 5,
+  "jumlahDariAyamBaru": 3,
+  "fotoMortalitasBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/...",
+  "fotoMortalitasFileName": "mortalitas_test.jpg"
+}
+
+###
+
+### ? Test Manual Split - Invalid (Total Mismatch)
+### Should fail: jumlahDariAyamLama + jumlahDariAyamBaru != jumlahKematian
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 10,
+  "penyebabKematian": "Test Invalid - Should Fail",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 6,
+  "jumlahDariAyamBaru": 3
+}
+
+# Expected Error:
+# "Total JumlahDariAyamLama (6) + JumlahDariAyamBaru (3) = 9 harus sama dengan JumlahKematian (10)."
+
+###
+
+### ? Test Manual Split - Negative Values
+### Should fail: negative values not allowed
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 10,
+  "penyebabKematian": "Test Negative - Should Fail",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": -2,
+  "jumlahDariAyamBaru": 12
+}
+
+# Expected Error:
+# "Jumlah kematian tidak boleh negatif."
+
+###
+
+### ? Test Manual Split - Exceed Stock
+### Should fail: jumlah melebihi stok yang tersedia
+
+POST {{baseUrl}}/api/mortalitas
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2024-01-15T10:00:00Z",
+  "jumlahKematian": 999999,
+  "penyebabKematian": "Test Exceed Stock - Should Fail",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 500000,
+  "jumlahDariAyamBaru": 499999
+}
+
+# Expected Error:
+# "Jumlah kematian dari ayam lama (500000) melebihi sisa ayam yang tersedia (xxx)."
+
+###
+
+### Variables (Update these before testing)
+@baseUrl = https://localhost:7100
+@token = your_jwt_token_here
+@kandangId = your_kandang_id_here

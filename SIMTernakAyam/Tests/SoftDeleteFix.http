@@ -1,0 +1,294 @@
+### =========================================
+### SOFT DELETE FIX - Test Suite
+### Testing bug fix: Delete not working properly
+### =========================================
+
+@baseUrl = https://localhost:7195/api
+@token = YOUR_JWT_TOKEN_HERE
+
+### =========================================
+### TEST 1: Delete Mortalitas (Soft Delete)
+### =========================================
+
+### Step 1: Get list mortalitas before delete
+GET {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+
+### Step 2: Delete mortalitas (should soft delete)
+# Replace {id} with actual ID from previous response
+DELETE {{baseUrl}}/mortalitas/{id}
+Authorization: Bearer {{token}}
+
+### Step 3: Get list mortalitas after delete (record should not appear)
+GET {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+
+### Step 4: Verify database (run in SQL Server Management Studio)
+# SELECT Id, JumlahKematian, IsDeleted, DeletedAt 
+# FROM Mortalitas 
+# WHERE Id = '{id}'
+# 
+# Expected:
+# - IsDeleted = 1 (true)
+# - DeletedAt = [timestamp]
+
+### =========================================
+### TEST 2: Check Stock After Delete
+### =========================================
+
+### Get kandang stock before any action
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+
+### Create mortalitas (record stock before)
+POST {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-11T10:00:00Z",
+  "jumlahKematian": 50,
+  "penyebabKematian": "Test soft delete",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 25,
+  "jumlahDariAyamBaru": 25
+}
+
+### Get kandang stock after create (should decrease by 50)
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+
+### Delete the mortalitas we just created
+# Get ID from previous response
+DELETE {{baseUrl}}/mortalitas/{mortalitasId}
+Authorization: Bearer {{token}}
+
+### Get kandang stock after delete (SHOULD STAY THE SAME!)
+# This is the critical test - stock should NOT increase back
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+
+### =========================================
+### TEST 3: Verify Soft Delete in Multiple Scenarios
+### =========================================
+
+### Test 3.1: Delete Panen
+POST {{baseUrl}}/panens
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2026-01-11T10:00:00Z",
+  "jumlahEkorPanen": 100,
+  "beratTotalKg": 150,
+  "hargaPerKg": 25000,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 50,
+  "jumlahDariAyamBaru": 50
+}
+
+### Get stock before delete
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+
+### Delete panen
+DELETE {{baseUrl}}/panens/{panenId}
+Authorization: Bearer {{token}}
+
+### Get stock after delete (should NOT change!)
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+
+### =========================================
+### TEST 4: Direct SQL Verification
+### =========================================
+
+### Run these queries in SQL Server Management Studio
+
+/*
+-- 1. Check if soft delete columns exist
+SELECT 
+    COLUMN_NAME,
+    DATA_TYPE,
+    IS_NULLABLE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'Mortalitas'
+AND COLUMN_NAME IN ('IsDeleted', 'DeletedAt', 'DeletedBy')
+
+-- Expected: 3 rows
+-- IsDeleted: bit, NOT NULL
+-- DeletedAt: datetime2, NULL
+-- DeletedBy: uniqueidentifier, NULL
+
+-- 2. Check all mortalitas records with soft delete status
+SELECT 
+    Id,
+    AyamId,
+    JumlahKematian,
+    PenyebabKematian,
+    IsDeleted,
+    DeletedAt,
+    CreatedAt
+FROM Mortalitas
+ORDER BY CreatedAt DESC
+
+-- 3. Count active vs deleted records
+SELECT 
+    'Active' as Status,
+    COUNT(*) as Count
+FROM Mortalitas
+WHERE IsDeleted = 0
+
+UNION ALL
+
+SELECT 
+    'Deleted' as Status,
+    COUNT(*) as Count
+FROM Mortalitas
+WHERE IsDeleted = 1
+
+-- 4. Check stock calculation (should exclude deleted)
+DECLARE @KandangId UNIQUEIDENTIFIER = 'your-kandang-id-here'
+
+SELECT 
+    'Total Ayam Masuk' as Category,
+    SUM(JumlahMasuk) as Total
+FROM Ayams
+WHERE KandangId = @KandangId AND IsDeleted = 0
+
+UNION ALL
+
+SELECT 
+    'Total Mortalitas' as Category,
+    SUM(m.JumlahKematian) as Total
+FROM Mortalitas m
+INNER JOIN Ayams a ON m.AyamId = a.Id
+WHERE a.KandangId = @KandangId 
+AND m.IsDeleted = 0 
+AND a.IsDeleted = 0
+
+UNION ALL
+
+SELECT 
+    'Total Panen' as Category,
+    SUM(p.JumlahEkorPanen) as Total
+FROM Panens p
+INNER JOIN Ayams a ON p.AyamId = a.Id
+WHERE a.KandangId = @KandangId 
+AND p.IsDeleted = 0 
+AND a.IsDeleted = 0
+
+-- 5. Test soft delete update
+-- Pick a mortalitas ID that should be deleted
+UPDATE Mortalitas
+SET IsDeleted = 1, DeletedAt = GETUTCDATE()
+WHERE Id = 'test-id-here'
+
+-- Verify it's now excluded from stock calculation
+*/
+
+### =========================================
+### TEST 5: Performance Test - Index Verification
+### =========================================
+
+### Run in SQL Server Management Studio
+
+/*
+-- Check if indexes exist for IsDeleted columns
+SELECT 
+    t.name AS TableName,
+    i.name AS IndexName,
+    i.type_desc AS IndexType
+FROM sys.indexes i
+INNER JOIN sys.tables t ON i.object_id = t.object_id
+WHERE i.name LIKE 'IX_%_IsDeleted'
+ORDER BY t.name
+
+-- Expected indexes:
+-- IX_Ayams_IsDeleted
+-- IX_Mortalitas_IsDeleted
+-- IX_Panens_IsDeleted
+-- IX_Operasionals_IsDeleted
+-- etc...
+
+-- If missing, create them:
+CREATE INDEX IX_Mortalitas_IsDeleted ON Mortalitas(IsDeleted);
+*/
+
+### =========================================
+### TEST 6: Edge Cases
+### =========================================
+
+### 6.1: Try to delete non-existent mortalitas
+DELETE {{baseUrl}}/mortalitas/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+# Expected: 404 Not Found
+
+### 6.2: Try to get soft-deleted record
+GET {{baseUrl}}/mortalitas/{deleted-id}
+Authorization: Bearer {{token}}
+# Expected: 404 Not Found (because BaseRepository filters it out)
+
+### 6.3: Create -> Delete -> Verify stock chain
+# This is the complete workflow test
+
+# Step 1: Record initial stock
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+# Note: InitialStock = X
+
+# Step 2: Create mortalitas
+POST {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-11T10:00:00Z",
+  "jumlahKematian": 30,
+  "penyebabKematian": "Edge case test",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 15,
+  "jumlahDariAyamBaru": 15
+}
+
+# Step 3: Verify stock decreased
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+# Expected: Stock = X - 30
+
+# Step 4: Delete mortalitas
+DELETE {{baseUrl}}/mortalitas/{mortalitasId}
+Authorization: Bearer {{token}}
+
+# Step 5: Verify stock DID NOT increase back
+GET {{baseUrl}}/kandangs/{kandangId}/detail
+Authorization: Bearer {{token}}
+# Expected: Stock = X - 30 (MUST NOT be X!)
+
+### =========================================
+### EXPECTED RESULTS SUMMARY
+### =========================================
+
+/*
+? PASS Criteria:
+
+1. DELETE returns 200 OK
+2. Database shows IsDeleted = 1
+3. Database shows DeletedAt with timestamp
+4. GET list does not return deleted record
+5. GET by ID returns 404 for deleted record
+6. Stock calculation excludes deleted records
+7. Stock does NOT increase after delete
+8. Indexes exist for IsDeleted columns
+
+? FAIL Indicators:
+
+1. DELETE returns success but data still in GET list
+2. IsDeleted = 0 after delete
+3. DeletedAt is NULL after delete
+4. Stock increases after delete
+5. Soft deleted records appear in normal queries
+*/

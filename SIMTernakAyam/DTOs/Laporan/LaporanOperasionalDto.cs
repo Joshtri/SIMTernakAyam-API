@@ -33,6 +33,7 @@ namespace SIMTernakAyam.DTOs.Laporan
 
     public class OperasionalPerKandangDto
     {
+        public Guid KandangId { get; set; }
         public string NamaKandang { get; set; } = string.Empty;
         public string Lokasi { get; set; } = string.Empty;
         public int JumlahOperasional { get; set; }

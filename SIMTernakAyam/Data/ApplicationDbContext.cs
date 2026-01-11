@@ -27,6 +27,7 @@ namespace SIMTernakAyam.Data
         public DbSet<KandangAsisten> KandangAsistens { get; set; }
         public DbSet<JurnalHarian> JurnalHarians { get; set; }
         public DbSet<HargaPasar> HargaPasar { get; set; }
+        public DbSet<LogPeriodeKandang> LogPeriodeKandangs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,19 +47,19 @@ namespace SIMTernakAyam.Data
                 .HasForeignKey(a => a.KandangId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Relasi Ayam -> Mortalitas (One-to-Many)
+            // Relasi Ayam -> Mortalitas (One-to-Many) - CASCADE DELETE
             modelBuilder.Entity<Mortalitas>()
                 .HasOne(m => m.Ayam)
                 .WithMany()
                 .HasForeignKey(m => m.AyamId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // Relasi Ayam -> Panen (One-to-Many)
+            // Relasi Ayam -> Panen (One-to-Many) - CASCADE DELETE
             modelBuilder.Entity<Panen>()
                 .HasOne(p => p.Ayam)
                 .WithMany()
                 .HasForeignKey(p => p.AyamId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Relasi User -> Biaya (One-to-Many)
             modelBuilder.Entity<Biaya>()
@@ -267,6 +268,47 @@ namespace SIMTernakAyam.Data
             modelBuilder.Entity<JurnalHarian>()
                 .Property(j => j.FotoKegiatan)
                 .HasMaxLength(500);
+
+            // Relasi LogPeriodeKandang -> Kandang (Many-to-One)
+            modelBuilder.Entity<LogPeriodeKandang>()
+                .HasOne(l => l.Kandang)
+                .WithMany()
+                .HasForeignKey(l => l.KandangId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relasi LogPeriodeKandang -> User (Petugas) (Many-to-One)
+            modelBuilder.Entity<LogPeriodeKandang>()
+                .HasOne(l => l.Petugas)
+                .WithMany()
+                .HasForeignKey(l => l.PetugasId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Konfigurasi properti untuk LogPeriodeKandang
+            modelBuilder.Entity<LogPeriodeKandang>()
+                .Property(l => l.Periode)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            modelBuilder.Entity<LogPeriodeKandang>()
+                .Property(l => l.AlasanAdaSisa)
+                .HasMaxLength(500);
+
+            // ⭐ GLOBAL QUERY FILTER: Automatic soft delete filtering for all entities
+            // This applies to all entities that inherit from BaseModel
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                // Check if entity inherits from BaseModel
+                if (typeof(BaseModel).IsAssignableFrom(entityType.ClrType))
+                {
+                    // Create the filter expression: entity => !entity.IsDeleted
+                    var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
+                    var propertyAccess = System.Linq.Expressions.Expression.Property(parameter, nameof(BaseModel.IsDeleted));
+                    var notDeleted = System.Linq.Expressions.Expression.Not(propertyAccess);
+                    var lambda = System.Linq.Expressions.Expression.Lambda(notDeleted, parameter);
+
+                    modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                }
+            }
 
             // ------------------------------------------------------------
             // Seed data for demo (petugas, kandang, jenis kegiatan, operasional & biaya)

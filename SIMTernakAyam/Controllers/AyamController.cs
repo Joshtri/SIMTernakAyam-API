@@ -1,10 +1,13 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Ayam;
+using SIMTernakAyam.DTOs.Kandang;
 using SIMTernakAyam.Services.Interfaces;
 using SIMTernakAyam.Repository.Interfaces;
+using System.Globalization;
 
 namespace SIMTernakAyam.Controllers
 {
@@ -28,10 +31,38 @@ namespace SIMTernakAyam.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<AyamResponseDto>>), 200)]
-        public async Task<IActionResult> GetAll([FromQuery] Guid? kandangId = null, [FromQuery] string? search = null)
-        {   
+        public async Task<IActionResult> GetAll([FromQuery] Guid? kandangId = null, [FromQuery] string? search = null, [FromQuery] string? period = null)
+        {
             try
             {
+                // Parse period parameter or default to current month
+                bool applyPeriodFilter = true;
+                DateTime filterDate = DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(period))
+                {
+                    // Check if user wants to show all data
+                    if (period.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        applyPeriodFilter = false;
+                    }
+                    else
+                    {
+                        // Try to parse the period (expected format: yyyy-MM)
+                        if (DateTime.TryParseExact(period + "-01", "yyyy-MM-dd", null, DateTimeStyles.None, out var parsedDate))
+                        {
+                            filterDate = parsedDate;
+                        }
+                        else
+                        {
+                            return Error("Format period tidak valid. Gunakan format yyyy-MM (contoh: 2026-01) atau 'all' untuk semua data.", 400);
+                        }
+                    }
+                }
+
+                int filterYear = filterDate.Year;
+                int filterMonth = filterDate.Month;
+
                 IEnumerable<Models.Ayam> ayams;
 
                 if (kandangId.HasValue && kandangId.Value != Guid.Empty)
@@ -45,6 +76,15 @@ namespace SIMTernakAyam.Controllers
                 }
 
                 var ayamList = ayams.ToList();
+
+                // Apply period filter (by month and year of TanggalMasuk) if not "all"
+                if (applyPeriodFilter)
+                {
+                    ayamList = ayamList.Where(a =>
+                        a.TanggalMasuk.Year == filterYear &&
+                        a.TanggalMasuk.Month == filterMonth
+                    ).ToList();
+                }
 
                 // Apply free-text search (optional)
                 if (!string.IsNullOrWhiteSpace(search))
@@ -111,6 +151,19 @@ namespace SIMTernakAyam.Controllers
                     return ValidationError(ModelState);
                 }
 
+                // Validate alasanInput jika forceInput = true
+                if (dto.ForceInput && string.IsNullOrWhiteSpace(dto.AlasanInput))
+                {
+                    return Error("Alasan input wajib diisi jika ForceInput = true.", 400);
+                }
+
+                // Get userId from claims
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                {
+                    return Error("User ID tidak valid.", 401);
+                }
+
                 var ayam = new Models.Ayam
                 {
                     KandangId = dto.KandangId,
@@ -118,16 +171,57 @@ namespace SIMTernakAyam.Controllers
                     JumlahMasuk = dto.JumlahMasuk
                 };
 
-                var result = await _ayamService.CreateAsync(ayam);
+                // Use new CreateWithValidationAsync method
+                var result = await _ayamService.CreateWithValidationAsync(ayam, dto.ForceInput, dto.AlasanInput, userId);
 
                 if (!result.Success)
                 {
+                    // Jika ada info kapasitas, sertakan dalam response
+                    if (result.KapasitasInfo != null)
+                    {
+                        return Error(result.Message, 400, result.KapasitasInfo);
+                    }
                     return Error(result.Message, 400);
                 }
 
                 // New ayam will have 0 harvest and 0 mortality
                 var response = AyamResponseDto.FromEntity(result.Data!, 0, 0);
                 return Created(response, result.Message);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Get informasi kapasitas dan sisa ayam di kandang
+        /// </summary>
+        [HttpGet("kandang/{kandangId}/kapasitas")]
+        [ProducesResponseType(typeof(Common.ApiResponse<KapasitasKandangDto>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetKapasitasKandang(Guid kandangId, [FromQuery] string? periodeRencana = null)
+        {
+            try
+            {
+                // Parse periode format yyyy-MM
+                DateTime? tanggalMasukRencana = null;
+                if (!string.IsNullOrWhiteSpace(periodeRencana))
+                {
+                    // Expected format: yyyy-MM (contoh: 2026-02)
+                    if (DateTime.TryParseExact(periodeRencana + "-01", "yyyy-MM-dd", 
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+                    {
+                        tanggalMasukRencana = parsedDate;
+                    }
+                    else
+                    {
+                        return Error("Format periode tidak valid. Gunakan format yyyy-MM (contoh: 2026-02).", 400);
+                    }
+                }
+
+                var kapasitas = await _ayamService.GetKapasitasKandangAsync(kandangId, tanggalMasukRencana);
+                return Success(kapasitas, "Berhasil mengambil informasi kapasitas kandang.");
             }
             catch (Exception ex)
             {
@@ -200,6 +294,66 @@ namespace SIMTernakAyam.Controllers
                 }
 
                 return Success(result.Message, 200);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Get ayam yang masih ada sisa (stok masih tersedia) di kandang tertentu
+        /// </summary>
+        [HttpGet("kandang/{kandangId}/sisa")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<AyamResponseDto>>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetAyamDenganSisaByKandang(Guid kandangId)
+        {
+            try
+            {
+                // Get all ayam in kandang
+                var ayams = await _ayamService.GetAyamByKandangAsync(kandangId);
+                var ayamList = ayams.ToList();
+
+                if (!ayamList.Any())
+                {
+                    return NotFound("Tidak ada data ayam di kandang ini.");
+                }
+
+                // Get stock data
+                var ayamIds = ayamList.Select(a => a.Id).ToList();
+                var panenData = await _panenRepository.GetTotalEkorPanenByAyamIdsAsync(ayamIds);
+                var mortalitasData = await _mortalitasRepository.GetTotalMortalitasByAyamIdsAsync(ayamIds);
+
+                // Filter only ayam with remaining stock (SisaAyamHidup > 0)
+                var ayamDenganSisa = new List<AyamResponseDto>();
+
+                foreach (var ayam in ayamList)
+                {
+                    var jumlahDipanen = panenData.GetValueOrDefault(ayam.Id, 0);
+                    var jumlahMortalitas = mortalitasData.GetValueOrDefault(ayam.Id, 0);
+                    var dto = AyamResponseDto.FromEntity(ayam, jumlahDipanen, jumlahMortalitas);
+
+                    // Only include if there's remaining stock
+                    if (dto.SisaAyamHidup > 0)
+                    {
+                        ayamDenganSisa.Add(dto);
+                    }
+                }
+
+                if (!ayamDenganSisa.Any())
+                {
+                    return Success(
+                        ayamDenganSisa, 
+                        "Tidak ada ayam dengan sisa stok di kandang ini. Semua ayam sudah habis (dipanen/mortalitas)."
+                    );
+                }
+
+                var totalSisa = ayamDenganSisa.Sum(a => a.SisaAyamHidup);
+                return Success(
+                    ayamDenganSisa, 
+                    $"Berhasil mengambil {ayamDenganSisa.Count} record ayam dengan total sisa {totalSisa} ekor."
+                );
             }
             catch (Exception ex)
             {

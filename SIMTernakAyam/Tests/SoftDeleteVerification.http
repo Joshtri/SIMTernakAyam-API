@@ -1,0 +1,153 @@
+### =========================================
+### SOFT DELETE VERIFICATION TEST
+### =========================================
+
+@baseUrl = https://localhost:7195/api
+@token = YOUR_AUTH_TOKEN_HERE
+@kandangId = YOUR_KANDANG_ID
+@ayamId = YOUR_AYAM_ID
+
+### 1️⃣ SETUP - Get Kandang Detail (before delete)
+GET {{baseUrl}}/kandang/{{kandangId}}
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "AyamMasuk": 1000,
+#   "TotalPanen": 200,
+#   "TotalMortalitas": 100,
+#   "SisaAyam": 700,  // 1000 - 200 - 100 = 700
+#   ...
+# }
+
+### =========================================
+### TEST MORTALITAS SOFT DELETE
+### =========================================
+
+### 2️⃣ Create Mortalitas (100 ekor)
+POST {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-12T00:00:00Z",
+  "jumlahKematian": 100,
+  "penyebabKematian": "Test Soft Delete",
+  "mode": "auto-fifo"
+}
+
+### Expected: Success, save the mortalitas ID
+
+@mortalitasId = PASTE_MORTALITAS_ID_HERE
+
+### 3️⃣ Get Kandang Detail (after create mortalitas)
+GET {{baseUrl}}/kandang/{{kandangId}}
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "SisaAyam": 600,  // 700 - 100 = 600
+#   "TotalMortalitas": 200  // 100 + 100 = 200
+# }
+
+### 4️⃣ Delete Mortalitas (Soft Delete)
+DELETE {{baseUrl}}/mortalitas/{{mortalitasId}}
+Authorization: Bearer {{token}}
+
+### Expected: Success message
+
+### 5️⃣ Get Kandang Detail (after soft delete mortalitas)
+### 🎯 CRITICAL TEST: Sisa Ayam harus TETAP 700 (bukan kembali ke 600)
+GET {{baseUrl}}/kandang/{{kandangId}}
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "SisaAyam": 700,  // ✅ BACK TO ORIGINAL (deleted mortalitas excluded)
+#   "TotalMortalitas": 100  // ✅ BACK TO ORIGINAL
+# }
+
+### 6️⃣ Verify Mortalitas tidak muncul di List
+GET {{baseUrl}}/mortalitas?kandangId={{kandangId}}
+Authorization: Bearer {{token}}
+
+### Expected: Mortalitas dengan ID {{mortalitasId}} TIDAK muncul
+
+### 7️⃣ Verify Mortalitas masih ada di Database (soft deleted)
+### Run this SQL in PostgreSQL:
+# SELECT "Id", "JumlahKematian", "IsDeleted", "DeletedAt"
+# FROM "Mortalitas"
+# WHERE "Id" = '{{mortalitasId}}';
+
+### Expected: IsDeleted = true, DeletedAt = timestamp
+
+### =========================================
+### TEST PANEN SOFT DELETE
+### =========================================
+
+### 8️⃣ Create Panen (500 ekor)
+POST {{baseUrl}}/panen
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tanggalPanen": "2026-01-12T00:00:00Z",
+  "jumlahEkorPanen": 500,
+  "beratRataRata": 2.5,
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}"
+}
+
+### Expected: Success, save panen ID
+
+@panenId = PASTE_PANEN_ID_HERE
+
+### 9️⃣ Get Kandang Detail (after create panen)
+GET {{baseUrl}}/kandang/{{kandangId}}
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "SisaAyam": 200,  // 700 - 500 = 200
+#   "TotalPanen": 700  // 200 + 500 = 700
+# }
+
+### 🔟 Delete Panen (Soft Delete)
+DELETE {{baseUrl}}/panen/{{panenId}}
+Authorization: Bearer {{token}}
+
+### Expected: Success message
+
+### 1️⃣1️⃣ Get Kandang Detail (after soft delete panen)
+### 🎯 CRITICAL TEST: Sisa Ayam harus KEMBALI ke 700 (bukan tetap 200)
+GET {{baseUrl}}/kandang/{{kandangId}}
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "SisaAyam": 700,  // ✅ BACK TO ORIGINAL (deleted panen excluded)
+#   "TotalPanen": 200  // ✅ BACK TO ORIGINAL
+# }
+
+### 1️⃣2️⃣ Verify Panen tidak muncul di List
+GET {{baseUrl}}/panen?kandangId={{kandangId}}
+Authorization: Bearer {{token}}
+
+### Expected: Panen dengan ID {{panenId}} TIDAK muncul
+
+### =========================================
+### ✅ EXPECTED RESULTS SUMMARY
+### =========================================
+#
+# ✅ Setelah soft delete mortalitas:
+#    - Sisa ayam KEMBALI ke jumlah sebelum create mortalitas
+#    - Mortalitas TIDAK muncul di GET list
+#    - Database masih punya record dengan IsDeleted = true
+#
+# ✅ Setelah soft delete panen:
+#    - Sisa ayam KEMBALI ke jumlah sebelum create panen
+#    - Panen TIDAK muncul di GET list
+#    - Database masih punya record dengan IsDeleted = true
+#
+### =========================================

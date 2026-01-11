@@ -21,9 +21,32 @@ namespace SIMTernakAyam.Repository
             await _database.AddAsync(entity);
         }
 
+        /// <summary>
+        /// ⭐ HARD DELETE: Benar-benar hapus entity dari database
+        /// </summary>
         public virtual void Delete(T entity)
         {
+            // ⭐ HARD DELETE: Remove entity from database
             _database.Remove(entity);
+        }
+
+        /// <summary>
+        /// ⭐ SOFT DELETE: Mark entity as deleted instead of removing it
+        /// (DEPRECATED - Gunakan Delete() untuk hard delete)
+        /// </summary>
+        public virtual void SoftDelete(T entity)
+        {
+            // Mark as deleted
+            entity.IsDeleted = true;
+            entity.DeletedAt = DateTime.UtcNow;
+
+            // Update the entity state
+            var entry = _context.Entry(entity);
+            if (entry.State == EntityState.Detached)
+            {
+                _database.Attach(entity);
+            }
+            entry.State = EntityState.Modified;
         }
 
         public IEnumerable<T> FindWhere(Func<T, bool> filter)
@@ -33,17 +56,20 @@ namespace SIMTernakAyam.Repository
 
         public virtual async Task<IEnumerable<T>> GetAllAsync()
         {
-            return await _database.ToListAsync();
+            // ⭐ Filter out soft-deleted records
+            return await _database.Where(e => !e.IsDeleted).ToListAsync();
         }
 
         public virtual async Task<T?> GetByIdAsync(Guid id)
         {
-            return await _database.FirstOrDefaultAsync(s => s.Id == id);
+            // ⭐ Filter out soft-deleted records
+            return await _database.FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
         }
 
         public virtual async Task<T?> GetByIdNoTrackingAsync(Guid id)
         {
-            return await _database.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+            // ⭐ Filter out soft-deleted records
+            return await _database.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
         }
 
         public virtual async Task SaveChangesAsync()
@@ -93,6 +119,23 @@ namespace SIMTernakAyam.Repository
             {
                 entry.State = EntityState.Detached;
             }
+        }
+
+
+        /// <summary>
+        /// ⭐ RESTORE: Restore soft-deleted entity
+        /// </summary>
+        public virtual void Restore(T entity)
+        {
+            entity.IsDeleted = false;
+            entity.DeletedAt = null;
+            
+            var entry = _context.Entry(entity);
+            if (entry.State == EntityState.Detached)
+            {
+                _database.Attach(entity);
+            }
+            entry.State = EntityState.Modified;
         }
     }
 }

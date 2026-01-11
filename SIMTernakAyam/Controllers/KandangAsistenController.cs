@@ -77,6 +77,32 @@ namespace SIMTernakAyam.Controllers
         }
 
         /// <summary>
+        /// Get all asistens for a specific kandang with ayam sisa information
+        /// </summary>
+        [HttpGet("by-kandang/{kandangId}/with-ayam-sisa")]
+        public async Task<IActionResult> GetByKandangWithAyamSisa(Guid kandangId)
+        {
+            try
+            {
+                var kandangAsistens = await _kandangAsistenService.GetAsistensByKandangAsync(kandangId);
+                var ayamSisaList = await _kandangAsistenService.GetAyamSisaByKandangAsync(kandangId);
+                
+                // Build response with ayam sisa info
+                var ayamSisaByKandang = new Dictionary<Guid, IEnumerable<Models.Ayam>>
+                {
+                    { kandangId, ayamSisaList }
+                };
+
+                var response = KandangAsistenWithAyamSisaDto.FromEntities(kandangAsistens, ayamSisaByKandang);
+                return Success(response, "Data asisten kandang dengan informasi ayam sisa berhasil diambil");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
         /// Get active asistens for a specific kandang
         /// </summary>
         [HttpGet("by-kandang/{kandangId}/active")]

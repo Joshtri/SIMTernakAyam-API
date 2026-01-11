@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Operasional;
 using SIMTernakAyam.Services.Interfaces;
+using System.Globalization;
 
 namespace SIMTernakAyam.Controllers
 {
@@ -342,12 +343,80 @@ namespace SIMTernakAyam.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<OperasionalResponseDto>>), 200)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            [FromQuery] Guid? kandangId = null,
+            [FromQuery] Guid? petugasId = null,
+            [FromQuery] Guid? pakanId = null,
+            [FromQuery] Guid? vaksinId = null,
+            [FromQuery] string? period = null)
         {
             try
             {
+                // Parse period parameter or default to current month
+                bool applyPeriodFilter = true;
+                DateTime filterDate = DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(period))
+                {
+                    // Check if user wants to show all data
+                    if (period.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        applyPeriodFilter = false;
+                    }
+                    else
+                    {
+                        // Try to parse the period (expected format: yyyy-MM)
+                        if (DateTime.TryParseExact(period + "-01", "yyyy-MM-dd", null, DateTimeStyles.None, out var parsedDate))
+                        {
+                            filterDate = parsedDate;
+                        }
+                        else
+                        {
+                            return Error("Format period tidak valid. Gunakan format yyyy-MM (contoh: 2026-01) atau 'all' untuk semua data.", 400);
+                        }
+                    }
+                }
+
+                int filterYear = filterDate.Year;
+                int filterMonth = filterDate.Month;
+
                 var operasionals = await _operasionalService.GetAllOperasionalWithDetailsAsync();
-                var response = OperasionalResponseDto.FromEntities(operasionals);
+                var operasionalList = operasionals.ToList();
+
+                // Apply kandangId filter if provided
+                if (kandangId.HasValue && kandangId.Value != Guid.Empty)
+                {
+                    operasionalList = operasionalList.Where(o => o.KandangId == kandangId.Value).ToList();
+                }
+
+                // Apply petugasId filter if provided
+                if (petugasId.HasValue && petugasId.Value != Guid.Empty)
+                {
+                    operasionalList = operasionalList.Where(o => o.PetugasId == petugasId.Value).ToList();
+                }
+
+                // Apply pakanId filter if provided
+                if (pakanId.HasValue && pakanId.Value != Guid.Empty)
+                {
+                    operasionalList = operasionalList.Where(o => o.PakanId.HasValue && o.PakanId.Value == pakanId.Value).ToList();
+                }
+
+                // Apply vaksinId filter if provided
+                if (vaksinId.HasValue && vaksinId.Value != Guid.Empty)
+                {
+                    operasionalList = operasionalList.Where(o => o.VaksinId.HasValue && o.VaksinId.Value == vaksinId.Value).ToList();
+                }
+
+                // Apply period filter (by month and year of Tanggal) if not "all"
+                if (applyPeriodFilter)
+                {
+                    operasionalList = operasionalList.Where(o =>
+                        o.Tanggal.Year == filterYear &&
+                        o.Tanggal.Month == filterMonth
+                    ).ToList();
+                }
+
+                var response = OperasionalResponseDto.FromEntities(operasionalList);
                 return Success(response, "Berhasil mengambil semua data operasional.");
             }
             catch (Exception ex)

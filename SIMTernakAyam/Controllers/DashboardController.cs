@@ -117,15 +117,45 @@ namespace SIMTernakAyam.Controllers
         /// <summary>
         /// Get pemilik dashboard data
         /// </summary>
+        /// <param name="month">Optional month filter in format YYYY-MM (e.g., 2025-01). Defaults to current month.</param>
         /// <returns>Pemilik dashboard</returns>
         [HttpGet("pemilik")]
         [ProducesResponseType(typeof(Common.ApiResponse<PemilikDashboardDto>), 200)]
-        public async Task<IActionResult> GetPemilikDashboard()
+        public async Task<IActionResult> GetPemilikDashboard([FromQuery] string? month = null)
         {
             try
             {
-                var dashboard = await _dashboardService.GetPemilikDashboardAsync();
-                return Success(dashboard, "Berhasil mengambil dashboard pemilik.");
+                int year, monthNumber;
+
+                if (!string.IsNullOrEmpty(month))
+                {
+                    // Parse format YYYY-MM
+                    var parts = month.Split('-');
+                    if (parts.Length != 2 || !int.TryParse(parts[0], out year) || !int.TryParse(parts[1], out monthNumber))
+                    {
+                        return BadRequest("Format bulan tidak valid. Gunakan format YYYY-MM (contoh: 2025-01)");
+                    }
+
+                    if (monthNumber < 1 || monthNumber > 12)
+                    {
+                        return BadRequest("Bulan harus antara 01-12");
+                    }
+
+                    if (year < 2000 || year > 2100)
+                    {
+                        return BadRequest("Tahun tidak valid");
+                    }
+                }
+                else
+                {
+                    // Default to current month
+                    var now = DateTime.UtcNow;
+                    year = now.Year;
+                    monthNumber = now.Month;
+                }
+
+                var dashboard = await _dashboardService.GetPemilikDashboardAsync(year, monthNumber);
+                return Success(dashboard, $"Berhasil mengambil dashboard pemilik untuk {year:D4}-{monthNumber:D2}.");
             }
             catch (Exception ex)
             {

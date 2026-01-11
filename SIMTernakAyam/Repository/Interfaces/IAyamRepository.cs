@@ -8,5 +8,10 @@ namespace SIMTernakAyam.Repository.Interfaces
         Task<int> GetTotalAyamInKandangAsync(Guid kandangId);
         Task<IEnumerable<Ayam>> GetAyamWithKandangAsync();
         Task<Ayam?> GetWithDetailsAsync(Guid id);
+        
+        /// <summary>
+        /// Get ayam sisa (IsAyamSisa = true) by kandangId
+        /// </summary>
+        Task<IEnumerable<Ayam>> GetAyamSisaByKandangIdAsync(Guid kandangId);
     }
 }

@@ -146,7 +146,7 @@ namespace SIMTernakAyam.Controllers
         /// <param name="createDto">Data harga pasar baru</param>
         /// <returns>Harga pasar yang dibuat</returns>
         [HttpPost]
-        [Authorize(Roles = "Admin,Manager,Operator")]
+        [Authorize(Roles = "Admin,Manager,Operator,Pemilik")]
         public async Task<IActionResult> Create([FromBody] CreateHargaPasarDto createDto)
         {
             try
@@ -205,7 +205,7 @@ namespace SIMTernakAyam.Controllers
         /// <param name="updateDto">Data update harga pasar</param>
         /// <returns>Hasil update</returns>
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Manager,Operator")]
+        [Authorize(Roles = "Admin,Manager,Operator,Pemilik")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateHargaPasarDto updateDto)
         {
             try
@@ -259,8 +259,8 @@ namespace SIMTernakAyam.Controllers
         /// <param name="id">ID harga pasar</param>
         /// <param name="isAktif">Status aktif baru</param>
         /// <returns>Hasil update status</returns>
-        [HttpPut("{id}/status")]
-        [Authorize(Roles = "Admin,Manager,Operator")]
+        [HttpPatch("{id}/status")]
+        [Authorize(Roles = "Admin,Manager,Operator,Pemilik")]
         public async Task<IActionResult> UpdateStatus(Guid id, [FromQuery] bool isAktif)
         {
             try
@@ -284,7 +284,7 @@ namespace SIMTernakAyam.Controllers
         /// </summary>
         /// <returns>Hasil operasi</returns>
         [HttpPost("deactivate-all")]
-        [Authorize(Roles = "Admin,Manager,Operator")]
+        [Authorize(Roles = "Admin,Manager,Operator,Pemilik")]
         public async Task<IActionResult> DeactivateAll()
         {
             try

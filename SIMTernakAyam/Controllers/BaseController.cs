@@ -77,6 +77,22 @@ namespace SIMTernakAyam.Controllers
         }
 
         /// <summary>
+        /// Return error response dengan data dan object tambahan
+        /// </summary>
+        protected IActionResult Error<T>(string message, int statusCode, T data)
+        {
+            var response = new ApiResponse<T>
+            {
+                Success = false,
+                Message = message,
+                Data = data,
+                StatusCode = statusCode,
+                Timestamp = DateTime.UtcNow
+            };
+            return StatusCode(statusCode, response);
+        }
+
+        /// <summary>
         /// Return not found response
         /// </summary>
         protected IActionResult NotFound(string message = "Data tidak ditemukan")

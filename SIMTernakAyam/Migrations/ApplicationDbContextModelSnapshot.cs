@@ -28,8 +28,23 @@ namespace SIMTernakAyam.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AlasanSisa")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAyamSisa")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("JumlahMasuk")
                         .HasColumnType("integer");
@@ -39,6 +54,9 @@ namespace SIMTernakAyam.Migrations
 
                     b.Property<Guid?>("KandangId1")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("TanggalDitandaiSisa")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("TanggalMasuk")
                         .HasColumnType("timestamp without time zone");
@@ -73,6 +91,15 @@ namespace SIMTernakAyam.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("JenisBiaya")
                         .IsRequired()
@@ -123,6 +150,12 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal>("HargaPerKg")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -131,6 +164,9 @@ namespace SIMTernakAyam.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Keterangan")
                         .HasMaxLength(500)
@@ -173,8 +209,17 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Deskripsi")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("NamaKegiatan")
                         .IsRequired()
@@ -205,6 +250,12 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("DeskripsiKegiatan")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -213,6 +264,9 @@ namespace SIMTernakAyam.Migrations
                     b.Property<string>("FotoKegiatan")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("JudulKegiatan")
                         .IsRequired()
@@ -255,6 +309,15 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Kapasitas")
                         .HasColumnType("integer");
 
@@ -294,7 +357,16 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsAktif")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<Guid>("KandangId")
@@ -313,6 +385,66 @@ namespace SIMTernakAyam.Migrations
                     b.ToTable("KandangAsistens");
                 });
 
+            modelBuilder.Entity("SIMTernakAyam.Models.LogPeriodeKandang", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AlasanAdaSisa")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("JumlahInputBaru")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("KandangId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("KapasitasKandang")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Periode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("PetugasId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SisaDariPeriodeSebelumnya")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("TanggalInput")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int>("TotalAyamSetelahInput")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdateAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KandangId");
+
+                    b.HasIndex("PetugasId");
+
+                    b.ToTable("LogPeriodeKandangs");
+                });
+
             modelBuilder.Entity("SIMTernakAyam.Models.Mortalitas", b =>
                 {
                     b.Property<Guid>("Id")
@@ -325,8 +457,17 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("FotoMortalitas")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("JumlahKematian")
                         .HasColumnType("integer");
@@ -356,6 +497,15 @@ namespace SIMTernakAyam.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
@@ -406,6 +556,15 @@ namespace SIMTernakAyam.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("JenisKegiatanId")
                         .HasColumnType("uuid");
@@ -458,6 +617,15 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("NamaPakan")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -494,6 +662,15 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("JumlahEkorPanen")
                         .HasColumnType("integer");
 
@@ -519,12 +696,21 @@ namespace SIMTernakAyam.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("FullName")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("NoWA")
                         .IsRequired()
@@ -560,6 +746,15 @@ namespace SIMTernakAyam.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("NamaVaksin")
                         .IsRequired()
@@ -671,12 +866,31 @@ namespace SIMTernakAyam.Migrations
                     b.Navigation("Kandang");
                 });
 
+            modelBuilder.Entity("SIMTernakAyam.Models.LogPeriodeKandang", b =>
+                {
+                    b.HasOne("SIMTernakAyam.Models.Kandang", "Kandang")
+                        .WithMany()
+                        .HasForeignKey("KandangId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SIMTernakAyam.Models.User", "Petugas")
+                        .WithMany()
+                        .HasForeignKey("PetugasId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Kandang");
+
+                    b.Navigation("Petugas");
+                });
+
             modelBuilder.Entity("SIMTernakAyam.Models.Mortalitas", b =>
                 {
                     b.HasOne("SIMTernakAyam.Models.Ayam", "Ayam")
                         .WithMany()
                         .HasForeignKey("AyamId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Ayam");
@@ -739,7 +953,7 @@ namespace SIMTernakAyam.Migrations
                     b.HasOne("SIMTernakAyam.Models.Ayam", "Ayam")
                         .WithMany()
                         .HasForeignKey("AyamId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Ayam");

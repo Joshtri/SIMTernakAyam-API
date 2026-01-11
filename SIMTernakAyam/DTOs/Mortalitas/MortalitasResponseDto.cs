@@ -34,10 +34,10 @@ namespace SIMTernakAyam.DTOs.Mortalitas
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
-        public static MortalitasResponseDto FromEntity(Models.Mortalitas mortalitas, int? totalAyamSebelum = null, decimal? kapasitas = null)
+        public static MortalitasResponseDto FromEntity(Models.Mortalitas mortalitas, int? totalAyamSebelum = null, int? totalAyamSesudah = null, decimal? kapasitas = null)
         {
             var totalSebelum = totalAyamSebelum ?? 0;
-            var totalSesudah = Math.Max(0, totalSebelum - mortalitas.JumlahKematian);
+            var totalSesudah = totalAyamSesudah ?? Math.Max(0, totalSebelum - mortalitas.JumlahKematian);
             var persentaseMortalitas = totalSebelum > 0 ? (decimal)mortalitas.JumlahKematian / totalSebelum * 100 : 0;
             var kandangKapasitas = kapasitas ?? 1; // Avoid division by zero
             

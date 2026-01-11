@@ -64,5 +64,16 @@ namespace SIMTernakAyam.Repository
                 .ThenInclude(k => k.User)
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
+
+        public async Task<IEnumerable<Ayam>> GetAyamSisaByKandangIdAsync(Guid kandangId)
+        {
+            return await _context.Ayams
+                .Include(a => a.Kandang)
+                .ThenInclude(k => k.User)
+                .Where(a => a.KandangId == kandangId && a.IsAyamSisa)
+                .OrderByDescending(a => a.TanggalDitandaiSisa)
+                .ThenByDescending(a => a.TanggalMasuk)
+                .ToListAsync();
+        }
     }
 }

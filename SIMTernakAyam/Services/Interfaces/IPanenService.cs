@@ -40,5 +40,35 @@ namespace SIMTernakAyam.Services.Interfaces
         /// <param name="endDate">Tanggal akhir</param>
         /// <returns>Ringkasan keuntungan</returns>
         Task<object> GetRingkasanKeuntunganAsync(DateTime startDate, DateTime endDate);
+
+        /// <summary>
+        /// Create panen dengan Auto FIFO - sistem otomatis distribute ke ayam-ayam dengan prioritas FIFO
+        /// </summary>
+        /// <param name="kandangId">ID kandang</param>
+        /// <param name="tanggalPanen">Tanggal panen</param>
+        /// <param name="jumlahEkorPanen">Total jumlah ekor yang dipanen</param>
+        /// <param name="beratRataRata">Berat rata-rata per ekor</param>
+        /// <returns>List panen yang berhasil dibuat</returns>
+        Task<(bool Success, string Message, List<Models.Panen>? Data)> CreatePanenAutoFifoAsync(
+            Guid kandangId,
+            DateTime tanggalPanen,
+            int jumlahEkorPanen,
+            decimal beratRataRata);
+
+        /// <summary>
+        /// Create panen dengan Manual Split - user menentukan jumlah dari ayam lama dan baru
+        /// </summary>
+        /// <param name="kandangId">ID kandang</param>
+        /// <param name="tanggalPanen">Tanggal panen</param>
+        /// <param name="jumlahDariAyamLama">Jumlah panen dari ayam periode lama/sisa</param>
+        /// <param name="jumlahDariAyamBaru">Jumlah panen dari ayam periode baru</param>
+        /// <param name="beratRataRata">Berat rata-rata per ekor (kg)</param>
+        /// <returns>List panen yang berhasil dibuat</returns>
+        Task<(bool Success, string Message, List<Models.Panen>? Data)> CreatePanenManualSplitAsync(
+            Guid kandangId,
+            DateTime tanggalPanen,
+            int jumlahDariAyamLama,
+            int jumlahDariAyamBaru,
+            decimal beratRataRata);
     }
 }

@@ -53,16 +53,19 @@ namespace SIMTernakAyam.Repository
 
         public async Task<int> GetCurrentAyamCountAsync(Guid kandangId)
         {
+            // Total ayam yang masuk (exclude yang soft deleted)
             var totalAyam = await _context.Ayams
-                .Where(a => a.KandangId == kandangId)
+                .Where(a => a.KandangId == kandangId && !a.IsDeleted)
                 .SumAsync(a => a.JumlahMasuk);
 
+            // Total mortalitas (exclude yang soft deleted)
             var totalMortalitas = await _context.Mortalitas
-                .Where(m => m.Ayam.KandangId == kandangId)
+                .Where(m => m.Ayam.KandangId == kandangId && !m.IsDeleted && !m.Ayam.IsDeleted)
                 .SumAsync(m => m.JumlahKematian);
 
+            // Total panen (exclude yang soft deleted)
             var totalPanen = await _context.Panens
-                .Where(p => p.Ayam.KandangId == kandangId)
+                .Where(p => p.Ayam.KandangId == kandangId && !p.IsDeleted && !p.Ayam.IsDeleted)
                 .SumAsync(p => p.JumlahEkorPanen);
 
             return totalAyam - totalMortalitas - totalPanen;

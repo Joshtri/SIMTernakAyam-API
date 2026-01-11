@@ -14,7 +14,10 @@
       "Bash(taskkill:*)",
       "Bash(powershell -Command:*)",
       "Bash(dotnet run:*)",
-      "Bash(timeout /t 2)"
+      "Bash(timeout /t 2)",
+      "Bash(psql \"Host=ep-little-sea-a1tdaedh-pooler.ap-southeast-1.aws.neon.tech; Database=SIMTernakAyam; Username=neondb_owner; Password=npg_pB2H5TDVnWeh; SSL Mode=VerifyFull\" -f \"C:\\\\Users\\\\LENOVO\\\\source\\\\repos\\\\SIMTernakAyam\\\\SIMTernakAyam\\\\Migrations\\\\20260112_UpdateCascadeDeleteForAyam.sql\")",
+      "Bash($env:PGPASSWORD='npg_pB2H5TDVnWeh')",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []

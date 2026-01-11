@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Panen;
 using SIMTernakAyam.Services.Interfaces;
+using System.Globalization;
 
 namespace SIMTernakAyam.Controllers
 {
@@ -17,12 +18,57 @@ namespace SIMTernakAyam.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<PanenResponseDto>>), 200)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] Guid? kandangId = null, [FromQuery] string? period = null)
         {
             try
             {
+                // Parse period parameter or default to current month
+                bool applyPeriodFilter = true;
+                DateTime filterDate = DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(period))
+                {
+                    // Check if user wants to show all data
+                    if (period.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        applyPeriodFilter = false;
+                    }
+                    else
+                    {
+                        // Try to parse the period (expected format: yyyy-MM)
+                        if (DateTime.TryParseExact(period + "-01", "yyyy-MM-dd", null, DateTimeStyles.None, out var parsedDate))
+                        {
+                            filterDate = parsedDate;
+                        }
+                        else
+                        {
+                            return Error("Format period tidak valid. Gunakan format yyyy-MM (contoh: 2026-01) atau 'all' untuk semua data.", 400);
+                        }
+                    }
+                }
+
+                int filterYear = filterDate.Year;
+                int filterMonth = filterDate.Month;
+
                 var panens = await _panenService.GetAllAsync();
-                var response = PanenResponseDto.FromEntities(panens);
+                var panenList = panens.ToList();
+
+                // Apply kandangId filter if provided
+                if (kandangId.HasValue && kandangId.Value != Guid.Empty)
+                {
+                    panenList = panenList.Where(p => p.Ayam != null && p.Ayam.KandangId == kandangId.Value).ToList();
+                }
+
+                // Apply period filter (by month and year of TanggalPanen) if not "all"
+                if (applyPeriodFilter)
+                {
+                    panenList = panenList.Where(p =>
+                        p.TanggalPanen.Year == filterYear &&
+                        p.TanggalPanen.Month == filterMonth
+                    ).ToList();
+                }
+
+                var response = PanenResponseDto.FromEntities(panenList);
                 return Success(response, "Berhasil mengambil semua panen.");
             }
             catch (Exception ex)
@@ -53,11 +99,113 @@ namespace SIMTernakAyam.Controllers
             }
         }
 
+        /// <summary>
+        /// Create panen dengan mode support (auto-fifo atau manual-split)
+        /// RECOMMENDED: Gunakan mode "manual-split"
+        /// </summary>
         [HttpPost]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<PanenResponseDto>>), 201)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        public async Task<IActionResult> Create([FromBody] CreatePanenWithModeDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return ValidationError(ModelState);
+                }
+
+                // Validate mode
+                if (dto.Mode != "auto-fifo" && dto.Mode != "manual-split")
+                {
+                    return Error("Mode harus 'auto-fifo' atau 'manual-split'.", 400);
+                }
+
+                // Validate manual-split specific requirements
+                if (dto.Mode == "manual-split")
+                {
+                    if (!dto.JumlahDariAyamLama.HasValue || !dto.JumlahDariAyamBaru.HasValue)
+                    {
+                        return Error("Mode 'manual-split' memerlukan JumlahDariAyamLama dan JumlahDariAyamBaru.", 400);
+                    }
+
+                    var totalManual = dto.JumlahDariAyamLama.Value + dto.JumlahDariAyamBaru.Value;
+                    if (totalManual != dto.JumlahEkorPanen)
+                    {
+                        return Error(
+                            $"Total JumlahDariAyamLama ({dto.JumlahDariAyamLama.Value}) + " +
+                            $"JumlahDariAyamBaru ({dto.JumlahDariAyamBaru.Value}) = {totalManual} " +
+                            $"harus sama dengan JumlahEkorPanen ({dto.JumlahEkorPanen}).", 400);
+                    }
+
+                    if (dto.JumlahDariAyamLama.Value < 0 || dto.JumlahDariAyamBaru.Value < 0)
+                    {
+                        return Error("Jumlah panen tidak boleh negatif.", 400);
+                    }
+
+                    if (totalManual <= 0)
+                    {
+                        return Error("Total jumlah panen harus lebih dari 0.", 400);
+                    }
+                }
+
+                // Pilih method berdasarkan mode
+                List<Models.Panen>? panenList;
+                string message;
+                bool success;
+
+                if (dto.Mode == "auto-fifo")
+                {
+                    // AUTO FIFO MODE
+                    var result = await _panenService.CreatePanenAutoFifoAsync(
+                        dto.KandangId,
+                        dto.TanggalPanen,
+                        dto.JumlahEkorPanen,
+                        dto.BeratRataRata);
+
+                    success = result.Success;
+                    message = result.Message;
+                    panenList = result.Data;
+                }
+                else
+                {
+                    // MANUAL SPLIT MODE
+                    var result = await _panenService.CreatePanenManualSplitAsync(
+                        dto.KandangId,
+                        dto.TanggalPanen,
+                        dto.JumlahDariAyamLama!.Value,
+                        dto.JumlahDariAyamBaru!.Value,
+                        dto.BeratRataRata);
+
+                    success = result.Success;
+                    message = result.Message;
+                    panenList = result.Data;
+                }
+
+                if (!success)
+                {
+                    return Error(message, 400);
+                }
+
+                // Convert to response DTOs
+                var responseDtos = PanenResponseDto.FromEntities(panenList!);
+
+                return Created(responseDtos, message);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Create panen single record (original method - untuk backward compatibility)
+        /// </summary>
+        [HttpPost("single")]
         [ProducesResponseType(typeof(Common.ApiResponse<PanenResponseDto>), 201)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 422)]
-        public async Task<IActionResult> Create([FromBody] CreatePanenDto dto)
+        public async Task<IActionResult> CreateSingle([FromBody] CreatePanenDto dto)
         {
             try
             {

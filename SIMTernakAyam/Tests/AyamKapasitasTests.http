@@ -1,0 +1,96 @@
+### Test Get Kapasitas Kandang dengan Format Periode Baru (FIXED v2)
+### Format parameter: periodeRencana=yyyy-MM (contoh: 2026-02)
+
+@baseUrl = https://localhost:7195
+@token = YOUR_TOKEN_HERE
+@kandangId = fd082b84-41c8-45d4-8480-ddb918f74cca
+
+### 1. Get Kapasitas Kandang - Tanpa Parameter Periode
+# Akan cek ayam yang sudah di-flag sebagai IsAyamSisa
+GET {{baseUrl}}/api/ayams/kandang/{{kandangId}}/kapasitas
+Authorization: Bearer {{token}}
+
+###
+
+### 2. Get Kapasitas Kandang - Dengan Periode Februari 2026
+# Format: yyyy-MM
+# Akan cek ayam yang TanggalMasuk < 1 Februari 2026
+# Contoh: Ayam Januari 2026 (200 ekor) = SISA
+# Expected: "periodeAyamSisa": "Januari 2026"
+GET {{baseUrl}}/api/ayams/kandang/{{kandangId}}/kapasitas?periodeRencana=2026-02
+Authorization: Bearer {{token}}
+
+###
+
+### 3. Get Kapasitas Kandang - Dengan Periode Maret 2026
+# Akan cek ayam yang TanggalMasuk < 1 Maret 2026
+# Contoh: Ayam Januari + Februari = SEMUA SISA
+# Expected: "periodeAyamSisa": "Februari 2026" (yang paling baru)
+GET {{baseUrl}}/api/ayams/kandang/{{kandangId}}/kapasitas?periodeRencana=2026-03
+Authorization: Bearer {{token}}
+
+###
+
+### 4. Get Kapasitas Kandang - Dengan Periode Januari 2026
+# Akan cek ayam yang TanggalMasuk < 1 Januari 2026
+# Contoh: Ayam Desember 2025 (jika ada) = SISA
+GET {{baseUrl}}/api/ayams/kandang/{{kandangId}}/kapasitas?periodeRencana=2026-01
+Authorization: Bearer {{token}}
+
+###
+
+### 5. Get Kapasitas Kandang - Dengan Periode Desember 2025
+# Akan cek ayam yang TanggalMasuk < 1 Desember 2025
+# Jika tidak ada ayam sebelum Desember 2025, tidak ada sisa
+# Expected: "adaSisaAyam": false
+GET {{baseUrl}}/api/ayams/kandang/{{kandangId}}/kapasitas?periodeRencana=2025-12
+Authorization: Bearer {{token}}
+
+###
+
+### 6. Get Kapasitas Kandang - Format Invalid (Should Error)
+# Test error handling untuk format yang salah
+GET {{baseUrl}}/api/ayams/kandang/{{kandangId}}/kapasitas?periodeRencana=2026-02-15
+Authorization: Bearer {{token}}
+
+###
+
+### 7. Get Kapasitas Kandang - Format Invalid 2 (Should Error)
+# Test error handling untuk format yang salah
+GET {{baseUrl}}/api/ayams/kandang/{{kandangId}}/kapasitas?periodeRencana=invalid
+Authorization: Bearer {{token}}
+
+###
+
+### EXPECTED BEHAVIOR (FIXED v2):
+### 
+### Parameter periodeRencana format: yyyy-MM (contoh: 2026-02)
+### 
+### LOGIKA BARU (BENAR):
+### - periodeRencana di-parse jadi tanggal 1 bulan tersebut (misal: 2026-02-01)
+### - Ayam dengan TanggalMasuk < tanggal tersebut = SISA dari periode sebelumnya
+### - PeriodeAyamSisa = periode dari ayam TERBARU yang masih sebelum periode rencana
+###
+### CONTOH:
+### - periodeRencana = 2026-02 (Februari 2026)
+### - Data: Ayam dengan TanggalMasuk = 2026-01-20 (Januari 2026, 200 ekor masih hidup)
+### - Logika: 2026-01-20 < 2026-02-01 ? SISA ?
+### - Result: 
+###   {
+###     "sisaAyamDariPeriodeSebelumnya": 200,
+###     "periodeAyamSisa": "Januari 2026",  ? BENAR!
+###     "adaSisaAyam": true
+###   }
+###
+### SKENARIO LAIN:
+### - periodeRencana = 2026-03 (Maret 2026)
+### - Data: 
+###   * Ayam A: 2026-01-15 (50 ekor)
+###   * Ayam B: 2026-02-20 (150 ekor)
+### - Logika: Kedua ayam < 2026-03-01 ? SEMUA SISA
+### - Result:
+###   {
+###     "sisaAyamDariPeriodeSebelumnya": 200,
+###     "periodeAyamSisa": "Februari 2026",  ? Ambil yang paling baru
+###     "adaSisaAyam": true
+###   }

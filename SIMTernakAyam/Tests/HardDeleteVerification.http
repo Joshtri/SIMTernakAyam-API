@@ -1,0 +1,154 @@
+### =========================================
+### HARD DELETE VERIFICATION TEST
+### ⭐ Data akan BENAR-BENAR HILANG dari database
+### =========================================
+
+@baseUrl = https://localhost:7195/api
+@token = YOUR_AUTH_TOKEN_HERE
+@kandangId = YOUR_KANDANG_ID
+
+### 1️⃣ Get Ayam List (cek sisa ayam sebelum test)
+GET {{baseUrl}}/ayams?kandangId={{kandangId}}&period=all
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "sisaAyamHidup": 778,
+#   "jumlahMasuk": 800,
+#   "jumlahSudahDipanen": 22,
+#   "jumlahMortalitas": 0
+# }
+
+### =========================================
+### TEST MORTALITAS HARD DELETE
+### =========================================
+
+### 2️⃣ Create Mortalitas (100 ekor)
+POST {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-12T00:00:00Z",
+  "jumlahKematian": 100,
+  "penyebabKematian": "Test Hard Delete",
+  "mode": "auto-fifo"
+}
+
+### Expected: Success
+### ⚠️ SIMPAN mortalitas ID dari response!
+
+@mortalitasId = PASTE_MORTALITAS_ID_HERE
+
+### 3️⃣ Get Ayam List (after create mortalitas)
+GET {{baseUrl}}/ayams?kandangId={{kandangId}}&period=all
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "sisaAyamHidup": 678,  // 778 - 100 = 678
+#   "jumlahMortalitas": 100
+# }
+
+### 4️⃣ Delete Mortalitas (HARD DELETE - Data HILANG dari database!)
+DELETE {{baseUrl}}/mortalitas/{{mortalitasId}}
+Authorization: Bearer {{token}}
+
+### Expected: Success message
+
+### 5️⃣ Get Ayam List (after hard delete mortalitas)
+### 🎯 CRITICAL: Sisa ayam HARUS KEMBALI ke 778
+GET {{baseUrl}}/ayams?kandangId={{kandangId}}&period=all
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "sisaAyamHidup": 778,  // ✅ KEMBALI ke original (100 - 100 = 0)
+#   "jumlahMortalitas": 0   // ✅ KEMBALI ke 0 (data HILANG dari DB)
+# }
+
+### 6️⃣ Verify di Database - Data BENAR-BENAR HILANG
+### Run SQL query di PostgreSQL:
+# SELECT "Id", "JumlahKematian", "PenyebabKematian"
+# FROM "Mortalitas"
+# WHERE "Id" = '{{mortalitasId}}';
+
+### Expected: ❌ NO RECORDS (data sudah BENAR-BENAR HILANG dari database)
+
+### =========================================
+### TEST PANEN HARD DELETE
+### =========================================
+
+### 7️⃣ Create Panen (200 ekor)
+POST {{baseUrl}}/panen
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tanggalPanen": "2026-01-12T00:00:00Z",
+  "jumlahEkorPanen": 200,
+  "beratRataRata": 2.5,
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}"
+}
+
+### Expected: Success
+### ⚠️ SIMPAN panen ID dari response!
+
+@panenId = PASTE_PANEN_ID_HERE
+
+### 8️⃣ Get Ayam List (after create panen)
+GET {{baseUrl}}/ayams?kandangId={{kandangId}}&period=all
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "sisaAyamHidup": 578,  // 778 - 200 = 578
+#   "jumlahSudahDipanen": 222  // 22 + 200 = 222
+# }
+
+### 9️⃣ Delete Panen (HARD DELETE - Data HILANG dari database!)
+DELETE {{baseUrl}}/panen/{{panenId}}
+Authorization: Bearer {{token}}
+
+### Expected: Success message
+
+### 🔟 Get Ayam List (after hard delete panen)
+### 🎯 CRITICAL: Sisa ayam HARUS KEMBALI ke 778
+GET {{baseUrl}}/ayams?kandangId={{kandangId}}&period=all
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "sisaAyamHidup": 778,  // ✅ KEMBALI ke original (222 - 200 = 22)
+#   "jumlahSudahDipanen": 22   // ✅ KEMBALI ke 22 (data HILANG dari DB)
+# }
+
+### 1️⃣1️⃣ Verify di Database - Data BENAR-BENAR HILANG
+### Run SQL query di PostgreSQL:
+# SELECT "Id", "JumlahEkorPanen", "BeratRataRata"
+# FROM "Panens"
+# WHERE "Id" = '{{panenId}}';
+
+### Expected: ❌ NO RECORDS (data sudah BENAR-BENAR HILANG dari database)
+
+### =========================================
+### ✅ EXPECTED RESULTS SUMMARY
+### =========================================
+#
+# ✅ Setelah HARD DELETE mortalitas:
+#    - Data BENAR-BENAR HILANG dari database (tidak ada di SQL query)
+#    - Sisa ayam KEMBALI ke jumlah sebelum create mortalitas
+#    - Mortalitas TIDAK muncul di GET list API
+#
+# ✅ Setelah HARD DELETE panen:
+#    - Data BENAR-BENAR HILANG dari database (tidak ada di SQL query)
+#    - Sisa ayam KEMBALI ke jumlah sebelum create panen
+#    - Panen TIDAK muncul di GET list API
+#
+# ⚠️ PERBEDAAN dengan SOFT DELETE:
+#    - SOFT DELETE: Data masih ada di DB dengan IsDeleted=true
+#    - HARD DELETE: Data BENAR-BENAR HILANG, tidak ada recovery
+#
+### =========================================

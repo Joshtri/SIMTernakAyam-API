@@ -7,6 +7,11 @@
         public DateTime TanggalMasuk { get; set; }
         public int JumlahMasuk { get; set; }
 
+        // Field untuk tracking ayam sisa dari periode sebelumnya
+        public bool IsAyamSisa { get; set; } = false;
+        public string? AlasanSisa { get; set; }
+        public DateTime? TanggalDitandaiSisa { get; set; }
+
         // Petugas bisa diakses lewat Kandang.User
     }
 }

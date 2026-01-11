@@ -24,7 +24,9 @@ namespace SIMTernakAyam.Services.Interfaces
         /// <summary>
         /// Get dashboard data for Pemilik role
         /// </summary>
-        Task<PemilikDashboardDto> GetPemilikDashboardAsync();
+        /// <param name="year">Optional year filter. Defaults to current year.</param>
+        /// <param name="month">Optional month filter. Defaults to current month.</param>
+        Task<PemilikDashboardDto> GetPemilikDashboardAsync(int? year = null, int? month = null);
 
         /// <summary>
         /// Get chart data for revenue vs expenses

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SIMTernakAyam.DTOs.Mortalitas;
+using SIMTernakAyam.Models;
 using SIMTernakAyam.Services.Interfaces;
+using System.Globalization;
 using System.Security.Claims;
 
 namespace SIMTernakAyam.Controllers
@@ -89,11 +91,49 @@ namespace SIMTernakAyam.Controllers
 
         [HttpGet]
         [ProducesResponseType(typeof(Common.ApiResponse<List<MortalitasResponseDto>>), 200)]
-        public async Task<IActionResult> GetAll([FromQuery] string? search = null, [FromQuery] Guid? kandangId = null)
+        public async Task<IActionResult> GetAll([FromQuery] string? search = null, [FromQuery] Guid? kandangId = null, [FromQuery] String? period = null)
         {
             try
             {
+                // Parse period parameter or default to current month
+                bool applyPeriodFilter = true;
+                DateTime filterDate = DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(period))
+                {
+                    // Check if user wants to show all data
+                    if (period.Equals("all", StringComparison.OrdinalIgnoreCase))
+                    {
+                        applyPeriodFilter = false;
+                    }
+                    else
+                    {
+                        // Try to parse the period (expected format: yyyy-MM)
+                        if (DateTime.TryParseExact(period + "-01", "yyyy-MM-dd", null, DateTimeStyles.None, out var parsedDate))
+                        {
+                            filterDate = parsedDate;
+                        }
+                        else
+                        {
+                            return Error("Format period tidak valid. Gunakan format yyyy-MM (contoh: 2026-01) atau 'all' untuk semua data.", 400);
+                        }
+                    }
+                }
+
+                int filterYear = filterDate.Year;
+                int filterMonth = filterDate.Month;
+
                 var response = await _mortalitasService.GetEnhancedMortalitasAsync(search, kandangId);
+
+                // Apply period filter (by month and year of TanggalKematian) if not "all"
+                if (applyPeriodFilter)
+                {
+                    response = response.Where(m =>
+                        m.TanggalKematian.Year == filterYear &&
+                        m.TanggalKematian.Month == filterMonth
+                    ).ToList();
+                }
+
                 return Success(response, "Berhasil mengambil data mortalitas dengan detail lengkap.");
             }
             catch (Exception ex)
@@ -139,10 +179,155 @@ namespace SIMTernakAyam.Controllers
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(Common.ApiResponse<MortalitasResponseDto>), 201)]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<MortalitasResponseDto>>), 201)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
+        public async Task<IActionResult> Create([FromBody] CreateMortalitasDto dto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return ValidationError(ModelState);
+                }
+
+                // Validate mode
+                if (dto.Mode != "auto-fifo" && dto.Mode != "manual-split")
+                {
+                    return Error("Mode harus 'auto-fifo' atau 'manual-split'.", 400);
+                }
+
+                // Validate manual-split specific requirements
+                if (dto.Mode == "manual-split")
+                {
+                    if (!dto.JumlahDariAyamLama.HasValue || !dto.JumlahDariAyamBaru.HasValue)
+                    {
+                        return Error("Mode 'manual-split' memerlukan JumlahDariAyamLama dan JumlahDariAyamBaru.", 400);
+                    }
+
+                    var totalManual = dto.JumlahDariAyamLama.Value + dto.JumlahDariAyamBaru.Value;
+                    if (totalManual != dto.JumlahKematian)
+                    {
+                        return Error(
+                            $"Total JumlahDariAyamLama ({dto.JumlahDariAyamLama.Value}) + " +
+                            $"JumlahDariAyamBaru ({dto.JumlahDariAyamBaru.Value}) = {totalManual} " +
+                            $"harus sama dengan JumlahKematian ({dto.JumlahKematian}).", 400);
+                    }
+
+                    if (dto.JumlahDariAyamLama.Value < 0 || dto.JumlahDariAyamBaru.Value < 0)
+                    {
+                        return Error("Jumlah kematian tidak boleh negatif.", 400);
+                    }
+
+                    if (totalManual <= 0)
+                    {
+                        return Error("Total jumlah kematian harus lebih dari 0.", 400);
+                    }
+                }
+
+                // Handle foto upload jika ada base64
+                IFormFile? fotoFile = null;
+                if (!string.IsNullOrWhiteSpace(dto.FotoMortalitasBase64))
+                {
+                    fotoFile = ConvertBase64ToFormFile(dto.FotoMortalitasBase64, dto.FotoMortalitasFileName);
+                }
+
+                // Pilih method berdasarkan mode
+                List<Mortalitas>? mortalitasList;
+                string message;
+                bool success;
+
+                if (dto.Mode == "auto-fifo")
+                {
+                    // AUTO FIFO MODE
+                    var result = await _mortalitasService.CreateMortalitasAutoFifoAsync(
+                        dto.KandangId,
+                        dto.TanggalKematian,
+                        dto.JumlahKematian,
+                        dto.PenyebabKematian,
+                        fotoFile);
+
+                    success = result.Success;
+                    message = result.Message;
+                    mortalitasList = result.Data;
+                }
+                else
+                {
+                    // MANUAL SPLIT MODE
+                    var result = await _mortalitasService.CreateMortalitasManualSplitAsync(
+                        dto.KandangId,
+                        dto.TanggalKematian,
+                        dto.JumlahDariAyamLama!.Value,
+                        dto.JumlahDariAyamBaru!.Value,
+                        dto.PenyebabKematian,
+                        fotoFile);
+
+                    success = result.Success;
+                    message = result.Message;
+                    mortalitasList = result.Data;
+                }
+
+                if (!success)
+                {
+                    return Error(message, 400);
+                }
+
+                // Convert to response DTOs
+                var responseDtos = new List<MortalitasResponseDto>();
+                foreach (var mortalitas in mortalitasList!)
+                {
+                    // Get enhanced details using service
+                    var detailDto = await _mortalitasService.GetMortalitasWithDetailsAsync(mortalitas.Id);
+                    if (detailDto != null)
+                    {
+                        responseDtos.Add(detailDto);
+                    }
+                }
+
+                // 🔔 KIRIM NOTIFIKASI OTOMATIS (HIGH PRIORITY - Mortalitas!)
+                try
+                {
+                    var userId = GetCurrentUserId();
+                    var user = await _userService.GetByIdAsync(userId);
+
+                    // Get kandang name from first mortalitas record
+                    if (mortalitasList.Any())
+                    {
+                        var firstAyam = await _ayamService.GetByIdAsync(mortalitasList.First().AyamId);
+                        if (firstAyam?.Kandang != null)
+                        {
+                            await _notificationService.NotifyMortalitasAsync(
+                                userId,
+                                user?.FullName ?? user?.Username ?? "Petugas",
+                                firstAyam.Kandang.NamaKandang,
+                                dto.JumlahKematian,
+                                dto.PenyebabKematian,
+                                firstAyam.Kandang.Id
+                            );
+                        }
+                    }
+                }
+                catch (Exception notifEx)
+                {
+                    // Log error tapi jangan fail request
+                    Console.WriteLine($"Failed to send notification: {notifEx.Message}");
+                }
+
+                return Created(responseDtos, message);
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Create mortalitas dengan Auto FIFO - sistem otomatis distribute ke ayam-ayam berdasarkan FIFO
+        /// </summary>
+        [HttpPost("auto-fifo")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<MortalitasResponseDto>>), 201)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 422)]
-        public async Task<IActionResult> Create([FromBody] CreateMortalitasDto dto)
+        public async Task<IActionResult> CreateAutoFifo([FromBody] CreateMortalitasAutoFifoDto dto)
         {
             try
             {
@@ -158,41 +343,50 @@ namespace SIMTernakAyam.Controllers
                     fotoFile = ConvertBase64ToFormFile(dto.FotoMortalitasBase64, dto.FotoMortalitasFileName);
                 }
 
-                var mortalitas = new Models.Mortalitas
-                {
-                    AyamId = dto.AyamId,
-                    TanggalKematian = dto.TanggalKematian,
-                    JumlahKematian = dto.JumlahKematian,
-                    PenyebabKematian = dto.PenyebabKematian
-                };
-
-                var result = await _mortalitasService.CreateAsync(mortalitas, fotoFile);
+                var result = await _mortalitasService.CreateMortalitasAutoFifoAsync(
+                    dto.KandangId,
+                    dto.TanggalKematian,
+                    dto.JumlahKematian,
+                    dto.PenyebabKematian,
+                    fotoFile);
 
                 if (!result.Success)
                 {
                     return Error(result.Message, 400);
                 }
 
-                // Get enhanced response with calculations
-                var enhancedResponse = await _mortalitasService.GetMortalitasWithDetailsAsync(result.Data!.Id);
+                // Get enhanced response list with calculations for all created mortalitas
+                var enhancedResponseList = new List<MortalitasResponseDto>();
+                foreach (var mortalitas in result.Data!)
+                {
+                    var enhancedDto = await _mortalitasService.GetMortalitasWithDetailsAsync(mortalitas.Id);
+                    if (enhancedDto != null)
+                    {
+                        enhancedResponseList.Add(enhancedDto);
+                    }
+                }
 
                 // 🔔 KIRIM NOTIFIKASI OTOMATIS (HIGH PRIORITY - Mortalitas!)
                 try
                 {
                     var userId = GetCurrentUserId();
                     var user = await _userService.GetByIdAsync(userId);
-                    var ayam = await _ayamService.GetByIdAsync(dto.AyamId);
 
-                    if (ayam?.Kandang != null)
+                    // Get kandang name from first mortalitas record
+                    if (result.Data.Any())
                     {
-                        await _notificationService.NotifyMortalitasAsync(
-                            userId,
-                            user?.FullName ?? user?.Username ?? "Petugas",
-                            ayam.Kandang.NamaKandang,
-                            dto.JumlahKematian,
-                            dto.PenyebabKematian,
-                            ayam.Kandang.Id
-                        );
+                        var firstAyam = await _ayamService.GetByIdAsync(result.Data.First().AyamId);
+                        if (firstAyam?.Kandang != null)
+                        {
+                            await _notificationService.NotifyMortalitasAsync(
+                                userId,
+                                user?.FullName ?? user?.Username ?? "Petugas",
+                                firstAyam.Kandang.NamaKandang,
+                                dto.JumlahKematian,
+                                dto.PenyebabKematian,
+                                firstAyam.Kandang.Id
+                            );
+                        }
                     }
                 }
                 catch (Exception notifEx)
@@ -201,7 +395,7 @@ namespace SIMTernakAyam.Controllers
                     Console.WriteLine($"Failed to send notification: {notifEx.Message}");
                 }
 
-                return Created(enhancedResponse, result.Message);
+                return Created(enhancedResponseList, result.Message);
             }
             catch (Exception ex)
             {

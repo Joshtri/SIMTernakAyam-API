@@ -1,0 +1,50 @@
+### Get Kandang Asisten by Kandang (Original Endpoint)
+GET https://localhost:7195/api/kandang-asistens/by-kandang/fd082b84-41c8-45d4-8480-ddb918f74cca
+Accept: application/json
+
+###
+
+### Get Kandang Asisten by Kandang WITH Ayam Sisa Information (NEW ENDPOINT)
+GET https://localhost:7195/api/kandang-asistens/by-kandang/fd082b84-41c8-45d4-8480-ddb918f74cca/with-ayam-sisa
+Accept: application/json
+
+###
+
+### Get Kandang Asisten by Kandang (Active Only)
+GET https://localhost:7195/api/kandang-asistens/by-kandang/fd082b84-41c8-45d4-8480-ddb918f74cca/active
+Accept: application/json
+
+###
+
+### Example Response Format for /with-ayam-sisa endpoint:
+### {
+###   "success": true,
+###   "message": "Data asisten kandang dengan informasi ayam sisa berhasil diambil",
+###   "data": [
+###     {
+###       "id": "guid",
+###       "kandangId": "fd082b84-41c8-45d4-8480-ddb918f74cca",
+###       "kandangNama": "Kandang A",
+###       "asistenId": "guid",
+###       "asistenNama": "John Doe",
+###       "asistenEmail": "john@example.com",
+###       "asistenNoWA": "081234567890",
+###       "catatan": "Asisten shift pagi",
+###       "isAktif": true,
+###       "createdAt": "2024-01-01T00:00:00Z",
+###       "updateAt": "2024-01-01T00:00:00Z",
+###       "ayamSisaList": [
+###         {
+###           "id": "ayam-guid-1",
+###           "tanggalMasuk": "2024-01-01T00:00:00Z",
+###           "jumlahMasukAwal": 1000,
+###           "alasanSisa": "Belum mencapai target panen",
+###           "tanggalDitandaiSisa": "2024-02-01T00:00:00Z",
+###           "isAyamSisa": true,
+###           "umurAyam": 45
+###         }
+###       ],
+###       "totalAyamSisa": 1000
+###     }
+###   ]
+### }

@@ -28,5 +28,10 @@ namespace SIMTernakAyam.Services.Interfaces
         /// Mendapatkan semua data dengan detail (includes)
         /// </summary>
         Task<IEnumerable<KandangAsisten>> GetAllWithDetailsAsync();
+
+        /// <summary>
+        /// Mendapatkan asisten dengan informasi ayam sisa di kandang
+        /// </summary>
+        Task<IEnumerable<Models.Ayam>> GetAyamSisaByKandangAsync(Guid kandangId);
     }
 }

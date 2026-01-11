@@ -186,10 +186,16 @@ namespace SIMTernakAyam.Controllers
         /// Mendapatkan analisis produktivitas semua petugas
         /// Hanya untuk Operator dan Pemilik
         /// </summary>
+        /// <param name="year">Optional year filter (e.g., 2025). If not provided, shows all time data.</param>
+        /// <param name="month">Optional month filter (1-12). Requires year parameter.</param>
+        /// <param name="hasKandang">Optional filter: true = hanya petugas yang mengelola kandang, false = hanya petugas yang tidak mengelola kandang, null = semua petugas</param>
         [HttpGet("produktivitas")]
         [ProducesResponseType(typeof(Common.ApiResponse<List<AnalisisProduktivitasDto>>), 200)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 403)]
-        public async Task<IActionResult> GetAnalisisProduktivitas()
+        public async Task<IActionResult> GetAnalisisProduktivitas(
+            [FromQuery] int? year = null,
+            [FromQuery] int? month = null,
+            [FromQuery] bool? hasKandang = null)
         {
             try
             {
@@ -198,8 +204,39 @@ namespace SIMTernakAyam.Controllers
                     return Forbidden("Akses ditolak. Fitur ini hanya untuk Operator dan Pemilik.");
                 }
 
-                var result = await _laporanService.GetAnalisisProduktivitasAsync();
-                return Success(result, "Berhasil mengambil analisis produktivitas petugas.");
+                // Validasi month jika ada
+                if (month.HasValue)
+                {
+                    if (!year.HasValue)
+                    {
+                        return BadRequest("Parameter 'year' diperlukan jika menggunakan parameter 'month'.");
+                    }
+
+                    if (month.Value < 1 || month.Value > 12)
+                    {
+                        return BadRequest("Bulan harus antara 1-12.");
+                    }
+                }
+
+                // Validasi year jika ada
+                if (year.HasValue && (year.Value < 2000 || year.Value > 2100))
+                {
+                    return BadRequest("Tahun tidak valid.");
+                }
+
+                var result = await _laporanService.GetAnalisisProduktivitasAsync(year, month, hasKandang);
+
+                var filterInfo = hasKandang.HasValue
+                    ? (hasKandang.Value ? " (mengelola kandang)" : " (tidak mengelola kandang)")
+                    : "";
+
+                var message = year.HasValue
+                    ? (month.HasValue
+                        ? $"Berhasil mengambil analisis produktivitas petugas untuk {year:D4}-{month:D2}{filterInfo}."
+                        : $"Berhasil mengambil analisis produktivitas petugas untuk tahun {year}{filterInfo}.")
+                    : $"Berhasil mengambil analisis produktivitas petugas (keseluruhan){filterInfo}.";
+
+                return Success(result, message);
             }
             catch (Exception ex)
             {
@@ -211,11 +248,18 @@ namespace SIMTernakAyam.Controllers
         /// Mendapatkan analisis produktivitas petugas tertentu
         /// Hanya untuk Operator dan Pemilik
         /// </summary>
+        /// <param name="year">Optional year filter (e.g., 2025). If not provided, shows all time data.</param>
+        /// <param name="month">Optional month filter (1-12). Requires year parameter.</param>
+        /// <param name="hasKandang">Optional filter: true = hanya petugas yang mengelola kandang, false = hanya petugas yang tidak mengelola kandang, null = semua petugas</param>
         [HttpGet("produktivitas/{petugasId}")]
         [ProducesResponseType(typeof(Common.ApiResponse<AnalisisProduktivitasDto>), 200)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 403)]
         [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
-        public async Task<IActionResult> GetAnalisisProduktivitasByPetugas(Guid petugasId)
+        public async Task<IActionResult> GetAnalisisProduktivitasByPetugas(
+            Guid petugasId,
+            [FromQuery] int? year = null,
+            [FromQuery] int? month = null,
+            [FromQuery] bool? hasKandang = null)
         {
             try
             {
@@ -224,13 +268,39 @@ namespace SIMTernakAyam.Controllers
                     return Forbidden("Akses ditolak. Fitur ini hanya untuk Operator dan Pemilik.");
                 }
 
-                var result = await _laporanService.GetAnalisisProduktivitasByPetugasAsync(petugasId);
+                // Validasi month jika ada
+                if (month.HasValue)
+                {
+                    if (!year.HasValue)
+                    {
+                        return BadRequest("Parameter 'year' diperlukan jika menggunakan parameter 'month'.");
+                    }
+
+                    if (month.Value < 1 || month.Value > 12)
+                    {
+                        return BadRequest("Bulan harus antara 1-12.");
+                    }
+                }
+
+                // Validasi year jika ada
+                if (year.HasValue && (year.Value < 2000 || year.Value > 2100))
+                {
+                    return BadRequest("Tahun tidak valid.");
+                }
+
+                var result = await _laporanService.GetAnalisisProduktivitasByPetugasAsync(petugasId, year, month, hasKandang);
                 if (result == null)
                 {
                     return NotFound("Petugas tidak ditemukan.");
                 }
 
-                return Success(result, "Berhasil mengambil analisis produktivitas petugas.");
+                var message = year.HasValue
+                    ? (month.HasValue
+                        ? $"Berhasil mengambil analisis produktivitas petugas untuk {year:D4}-{month:D2}."
+                        : $"Berhasil mengambil analisis produktivitas petugas untuk tahun {year}.")
+                    : "Berhasil mengambil analisis produktivitas petugas (keseluruhan).";
+
+                return Success(result, message);
             }
             catch (Exception ex)
             {

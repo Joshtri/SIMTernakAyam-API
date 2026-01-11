@@ -20,5 +20,39 @@ namespace SIMTernakAyam.Services.Interfaces
         // Methods with IFormFile support for image upload
         Task<(bool Success, string Message, Mortalitas? Data)> CreateAsync(Mortalitas entity, IFormFile? fotoMortalitas = null);
         Task<(bool Success, string Message)> UpdateAsync(Mortalitas entity, IFormFile? fotoMortalitas = null);
+
+        /// <summary>
+        /// Create mortalitas dengan Auto FIFO - sistem otomatis distribute ke ayam-ayam dengan prioritas FIFO
+        /// </summary>
+        /// <param name="kandangId">ID kandang</param>
+        /// <param name="tanggalKematian">Tanggal kematian</param>
+        /// <param name="jumlahKematian">Total jumlah kematian</param>
+        /// <param name="penyebabKematian">Penyebab kematian</param>
+        /// <param name="fotoMortalitas">File foto bukti mortalitas (optional)</param>
+        /// <returns>List mortalitas yang berhasil dibuat</returns>
+        Task<(bool Success, string Message, List<Mortalitas>? Data)> CreateMortalitasAutoFifoAsync(
+            Guid kandangId,
+            DateTime tanggalKematian,
+            int jumlahKematian,
+            string penyebabKematian,
+            IFormFile? fotoMortalitas = null);
+
+        /// <summary>
+        /// Create mortalitas dengan Manual Split - user menentukan jumlah dari ayam lama dan baru
+        /// </summary>
+        /// <param name="kandangId">ID kandang</param>
+        /// <param name="tanggalKematian">Tanggal kematian</param>
+        /// <param name="jumlahDariAyamLama">Jumlah kematian dari ayam periode lama/sisa</param>
+        /// <param name="jumlahDariAyamBaru">Jumlah kematian dari ayam periode baru</param>
+        /// <param name="penyebabKematian">Penyebab kematian</param>
+        /// <param name="fotoMortalitas">File foto bukti mortalitas (optional)</param>
+        /// <returns>List mortalitas yang berhasil dibuat</returns>
+        Task<(bool Success, string Message, List<Mortalitas>? Data)> CreateMortalitasManualSplitAsync(
+            Guid kandangId,
+            DateTime tanggalKematian,
+            int jumlahDariAyamLama,
+            int jumlahDariAyamBaru,
+            string penyebabKematian,
+            IFormFile? fotoMortalitas = null);
     }
 }

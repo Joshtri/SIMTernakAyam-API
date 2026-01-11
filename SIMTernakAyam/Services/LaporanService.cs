@@ -134,6 +134,7 @@ namespace SIMTernakAyam.Services
                 .GroupBy(o => o.Kandang)
                 .Select(g => new OperasionalPerKandangDto
                 {
+                    KandangId = g.Key.Id,
                     NamaKandang = g.Key.NamaKandang,
                     Lokasi = g.Key.Lokasi,
                     JumlahOperasional = g.Count(),
@@ -167,7 +168,7 @@ namespace SIMTernakAyam.Services
             };
         }
 
-        public async Task<List<AnalisisProduktivitasDto>> GetAnalisisProduktivitasAsync()
+        public async Task<List<AnalisisProduktivitasDto>> GetAnalisisProduktivitasAsync(int? year = null, int? month = null, bool? hasKandang = null)
         {
             // Ambil semua petugas
             var petugasList = await _context.Users
@@ -178,14 +179,29 @@ namespace SIMTernakAyam.Services
 
             foreach (var petugas in petugasList)
             {
-                var produktivitasDto = await BuildAnalisisProduktivitasDto(petugas);
+                var produktivitasDto = await BuildAnalisisProduktivitasDto(petugas, year, month);
                 result.Add(produktivitasDto);
+            }
+
+            // Filter berdasarkan hasKandang jika parameter ada
+            if (hasKandang.HasValue)
+            {
+                if (hasKandang.Value)
+                {
+                    // Hanya petugas yang mengelola kandang (totalKandang > 0)
+                    result = result.Where(p => p.TotalKandang > 0).ToList();
+                }
+                else
+                {
+                    // Hanya petugas yang tidak mengelola kandang (totalKandang == 0)
+                    result = result.Where(p => p.TotalKandang == 0).ToList();
+                }
             }
 
             return result.OrderByDescending(p => p.SkorProduktivitas).ToList();
         }
 
-        public async Task<AnalisisProduktivitasDto?> GetAnalisisProduktivitasByPetugasAsync(Guid petugasId)
+        public async Task<AnalisisProduktivitasDto?> GetAnalisisProduktivitasByPetugasAsync(Guid petugasId, int? year = null, int? month = null, bool? hasKandang = null)
         {
             var petugas = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == petugasId && u.Role == RoleEnum.Petugas);
@@ -193,11 +209,48 @@ namespace SIMTernakAyam.Services
             if (petugas == null)
                 return null;
 
-            return await BuildAnalisisProduktivitasDto(petugas);
+            var result = await BuildAnalisisProduktivitasDto(petugas, year, month);
+
+            // Filter berdasarkan hasKandang jika parameter ada
+            if (hasKandang.HasValue)
+            {
+                if (hasKandang.Value && result.TotalKandang == 0)
+                {
+                    // Diminta petugas yang mengelola kandang tapi petugas ini tidak mengelola
+                    return null;
+                }
+                else if (!hasKandang.Value && result.TotalKandang > 0)
+                {
+                    // Diminta petugas yang tidak mengelola kandang tapi petugas ini mengelola
+                    return null;
+                }
+            }
+
+            return result;
         }
 
-        private async Task<AnalisisProduktivitasDto> BuildAnalisisProduktivitasDto(Models.User petugas)
+        private async Task<AnalisisProduktivitasDto> BuildAnalisisProduktivitasDto(Models.User petugas, int? year = null, int? month = null)
         {
+            // Setup filter date range
+            DateTime? startDate = null;
+            DateTime? endDate = null;
+
+            if (year.HasValue)
+            {
+                if (month.HasValue)
+                {
+                    // Filter by specific month
+                    startDate = DateTime.SpecifyKind(new DateTime(year.Value, month.Value, 1), DateTimeKind.Utc);
+                    endDate = startDate.Value.AddMonths(1);
+                }
+                else
+                {
+                    // Filter by year
+                    startDate = DateTime.SpecifyKind(new DateTime(year.Value, 1, 1), DateTimeKind.Utc);
+                    endDate = startDate.Value.AddYears(1);
+                }
+            }
+
             // Ambil kandang yang dikelola
             var kandangs = await _context.Kandangs
                 .Where(k => k.petugasId == petugas.Id)
@@ -225,22 +278,43 @@ namespace SIMTernakAyam.Services
                 var mortalitasKandang = 0;
                 if (ayamIds.Any())
                 {
-                    mortalitasKandang = await _context.Mortalitas
-                        .Where(m => ayamIds.Contains(m.AyamId))
-                        .SumAsync(m => m.JumlahKematian);
+                    var mortalitasQuery = _context.Mortalitas.Where(m => ayamIds.Contains(m.AyamId));
+
+                    // Apply date filter if specified
+                    if (startDate.HasValue && endDate.HasValue)
+                    {
+                        mortalitasQuery = mortalitasQuery.Where(m => m.TanggalKematian >= startDate.Value && m.TanggalKematian < endDate.Value);
+                    }
+
+                    mortalitasKandang = await mortalitasQuery.SumAsync(m => m.JumlahKematian);
                 }
                 totalMortalitas += mortalitasKandang;
 
                 // Operasional untuk kandang ini
-                var operasionalKandang = await _context.Operasionals
-                    .Where(o => o.KandangId == kandang.Id && o.PetugasId == petugas.Id)
-                    .CountAsync();
+                var operasionalQuery = _context.Operasionals
+                    .Where(o => o.KandangId == kandang.Id && o.PetugasId == petugas.Id);
+
+                // Apply date filter if specified
+                if (startDate.HasValue && endDate.HasValue)
+                {
+                    operasionalQuery = operasionalQuery.Where(o => o.Tanggal >= startDate.Value && o.Tanggal < endDate.Value);
+                }
+
+                var operasionalKandang = await operasionalQuery.CountAsync();
                 totalOperasional += operasionalKandang;
 
                 // Kegiatan terakhir
-                var operasionalTerakhir = await _context.Operasionals
+                var operasionalTerakhirQuery = _context.Operasionals
                     .Include(o => o.JenisKegiatan)
-                    .Where(o => o.KandangId == kandang.Id && o.PetugasId == petugas.Id)
+                    .Where(o => o.KandangId == kandang.Id && o.PetugasId == petugas.Id);
+
+                // Apply date filter if specified
+                if (startDate.HasValue && endDate.HasValue)
+                {
+                    operasionalTerakhirQuery = operasionalTerakhirQuery.Where(o => o.Tanggal >= startDate.Value && o.Tanggal < endDate.Value);
+                }
+
+                var operasionalTerakhir = await operasionalTerakhirQuery
                     .OrderByDescending(o => o.Tanggal)
                     .FirstOrDefaultAsync();
 
@@ -268,21 +342,38 @@ namespace SIMTernakAyam.Services
             var rataMortalitas = totalAyamDikelola > 0 ? (decimal)totalMortalitas / totalAyamDikelola * 100 : 0;
 
             // Hitung skor produktivitas (0-100)
-            // Faktor: jumlah operasional (50%), tingkat kesehatan/rendah mortalitas (50%)
-            var skorOperasional = Math.Min(totalOperasional * 2, 50); // Max 50 poin
-            var skorKesehatan = Math.Max(50 - (rataMortalitas * 5), 0); // Max 50 poin, berkurang seiring mortalitas
-            var skorProduktivitas = skorOperasional + skorKesehatan;
-
-            // Rating performa
+            decimal skorProduktivitas = 0;
             string ratingPerforma;
-            if (skorProduktivitas >= 80)
-                ratingPerforma = "Sangat Baik";
-            else if (skorProduktivitas >= 60)
-                ratingPerforma = "Baik";
-            else if (skorProduktivitas >= 40)
-                ratingPerforma = "Cukup";
+
+            // Jika petugas tidak mengelola kandang sama sekali, skor = 0
+            if (kandangs.Count == 0)
+            {
+                skorProduktivitas = 0;
+                ratingPerforma = "Tidak Ada Data";
+            }
+            // Jika tidak ada operasional sama sekali (di periode tertentu atau secara keseluruhan), skor = 0
+            else if (totalOperasional == 0)
+            {
+                skorProduktivitas = 0;
+                ratingPerforma = "Tidak Ada Aktivitas";
+            }
             else
-                ratingPerforma = "Kurang";
+            {
+                // Faktor: jumlah operasional (50%), tingkat kesehatan/rendah mortalitas (50%)
+                var skorOperasional = Math.Min(totalOperasional * 2, 50); // Max 50 poin
+                var skorKesehatan = Math.Max(50 - (rataMortalitas * 5), 0); // Max 50 poin, berkurang seiring mortalitas
+                skorProduktivitas = skorOperasional + skorKesehatan;
+
+                // Rating performa
+                if (skorProduktivitas >= 80)
+                    ratingPerforma = "Sangat Baik";
+                else if (skorProduktivitas >= 60)
+                    ratingPerforma = "Baik";
+                else if (skorProduktivitas >= 40)
+                    ratingPerforma = "Cukup";
+                else
+                    ratingPerforma = "Kurang";
+            }
 
             return new AnalisisProduktivitasDto
             {

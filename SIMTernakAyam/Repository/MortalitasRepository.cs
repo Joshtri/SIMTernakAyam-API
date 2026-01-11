@@ -29,7 +29,7 @@ namespace SIMTernakAyam.Repository
                 .Include(m => m.Ayam)
                     .ThenInclude(a => a.Kandang)
                     .ThenInclude(k => k.User)
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .FirstOrDefaultAsync(m => m.Id == id && !m.IsDeleted);
         }
 
         // Get mortalitas with detailed calculations
@@ -55,25 +55,55 @@ namespace SIMTernakAyam.Repository
                 .ToListAsync();
         }
 
-        // Calculate total ayam before mortality incident
+        // Calculate total ayam before mortality incident (PER BATCH, not per kandang)
         public async Task<int> GetTotalAyamBeforeMortalityAsync(Guid ayamId, DateTime tanggalKematian)
         {
             var ayam = await _context.Ayams.FindAsync(ayamId);
             if (ayam == null) return 0;
 
-            // Get total ayam masuk
-            var totalMasuk = await _context.Ayams
-                .Where(a => a.KandangId == ayam.KandangId && a.TanggalMasuk <= tanggalKematian)
-                .SumAsync(a => a.JumlahMasuk);
+            // Get total ayam masuk for THIS SPECIFIC BATCH only
+            var totalMasuk = ayam.JumlahMasuk;
 
-            // Subtract previous mortalities
+            // ⭐ Subtract previous mortalities for THIS BATCH only (EXCLUDE SOFT DELETED)
             var totalMortalities = await _context.Mortalitas
-                .Where(m => m.Ayam.KandangId == ayam.KandangId && m.TanggalKematian < tanggalKematian)
+                .Where(m => m.AyamId == ayamId && m.TanggalKematian < tanggalKematian && !m.IsDeleted)
                 .SumAsync(m => m.JumlahKematian);
 
-            // Subtract previous harvests
+            // ⭐ Subtract previous harvests for THIS BATCH only (EXCLUDE SOFT DELETED)
             var totalPanen = await _context.Panens
-                .Where(p => p.Ayam.KandangId == ayam.KandangId && p.TanggalPanen < tanggalKematian)
+                .Where(p => p.AyamId == ayamId && p.TanggalPanen < tanggalKematian && !p.IsDeleted)
+                .SumAsync(p => p.JumlahEkorPanen);
+
+            return Math.Max(0, totalMasuk - totalMortalities - totalPanen);
+        }
+
+        /// <summary>
+        /// Calculate total ayam AFTER a specific mortality event (for display purposes)
+        /// This includes mortalities on the same date UP TO the specific mortality ID
+        /// </summary>
+        public async Task<int> GetTotalAyamAfterMortalityAsync(Guid ayamId, Guid mortalitasId, DateTime tanggalKematian)
+        {
+            var ayam = await _context.Ayams.FindAsync(ayamId);
+            if (ayam == null) return 0;
+
+            // Get the mortality record to get its JumlahKematian and CreatedAt
+            var currentMortalitas = await _context.Mortalitas.FindAsync(mortalitasId);
+            if (currentMortalitas == null) return 0;
+
+            // Get total ayam masuk for THIS SPECIFIC BATCH only
+            var totalMasuk = ayam.JumlahMasuk;
+
+            // ⭐ Subtract ALL mortalities UP TO AND INCLUDING this mortality event
+            // Use CreatedAt to determine order for mortalities on the same date
+            var totalMortalities = await _context.Mortalitas
+                .Where(m => m.AyamId == ayamId && !m.IsDeleted &&
+                           (m.TanggalKematian < tanggalKematian ||
+                            (m.TanggalKematian == tanggalKematian && m.CreatedAt <= currentMortalitas.CreatedAt)))
+                .SumAsync(m => m.JumlahKematian);
+
+            // ⭐ Subtract ALL harvests UP TO this date
+            var totalPanen = await _context.Panens
+                .Where(p => p.AyamId == ayamId && !p.IsDeleted && p.TanggalPanen <= tanggalKematian)
                 .SumAsync(p => p.JumlahEkorPanen);
 
             return Math.Max(0, totalMasuk - totalMortalities - totalPanen);

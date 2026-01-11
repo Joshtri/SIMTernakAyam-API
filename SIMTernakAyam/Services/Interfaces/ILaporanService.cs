@@ -24,12 +24,18 @@ namespace SIMTernakAyam.Services.Interfaces
         /// <summary>
         /// Mendapatkan analisis produktivitas semua petugas
         /// </summary>
-        Task<List<AnalisisProduktivitasDto>> GetAnalisisProduktivitasAsync();
+        /// <param name="year">Optional year filter. If null, shows all time data.</param>
+        /// <param name="month">Optional month filter (1-12). Requires year parameter.</param>
+        /// <param name="hasKandang">Optional filter: true = only staff managing kandang, false = only staff not managing kandang, null = all staff.</param>
+        Task<List<AnalisisProduktivitasDto>> GetAnalisisProduktivitasAsync(int? year = null, int? month = null, bool? hasKandang = null);
 
         /// <summary>
         /// Mendapatkan analisis produktivitas petugas tertentu
         /// </summary>
-        Task<AnalisisProduktivitasDto?> GetAnalisisProduktivitasByPetugasAsync(Guid petugasId);
+        /// <param name="year">Optional year filter. If null, shows all time data.</param>
+        /// <param name="month">Optional month filter (1-12). Requires year parameter.</param>
+        /// <param name="hasKandang">Optional filter: true = only staff managing kandang, false = only staff not managing kandang, null = all staff.</param>
+        Task<AnalisisProduktivitasDto?> GetAnalisisProduktivitasByPetugasAsync(Guid petugasId, int? year = null, int? month = null, bool? hasKandang = null);
 
         /// <summary>
         /// Generate PDF untuk laporan operasional

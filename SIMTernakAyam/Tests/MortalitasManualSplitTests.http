@@ -1,0 +1,236 @@
+### Test Create Mortalitas dengan Mode Auto FIFO dan Manual Split
+### Endpoint: POST /api/mortalitas
+
+@baseUrl = https://localhost:7195
+@token = YOUR_TOKEN_HERE
+@kandangId = fd082b84-41c8-45d4-8480-ddb918f74cca
+
+#####################################################################################
+### MODE 1: AUTO FIFO (Sistem otomatis pilih ayam terlama - FIFO)
+#####################################################################################
+
+### 1. Create Mortalitas - Mode AUTO FIFO
+# Sistem akan otomatis distribute kematian ke ayam-ayam berdasarkan FIFO
+# Prioritas: Ayam sisa (IsAyamSisa=true) dulu, baru ayam baru
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-15T10:00:00.000Z",
+  "jumlahKematian": 50,
+  "penyebabKematian": "Penyakit Flu Burung",
+  "mode": "auto-fifo"
+}
+
+###
+
+#####################################################################################
+### MODE 2: MANUAL SPLIT (User tentukan berapa dari ayam lama dan baru)
+#####################################################################################
+
+### 2. Create Mortalitas - Mode MANUAL SPLIT (Split antara ayam lama dan baru)
+# Skenario: Total kematian 50 ekor
+# - 30 ekor dari ayam lama/sisa (IsAyamSisa=true)
+# - 20 ekor dari ayam baru (IsAyamSisa=false)
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-20T10:00:00.000Z",
+  "jumlahKematian": 50,
+  "penyebabKematian": "Penyakit Newcastle",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 30,
+  "jumlahDariAyamBaru": 20
+}
+
+###
+
+### 3. Create Mortalitas - Manual Split (Semua dari ayam lama)
+# Skenario: Semua 40 ekor kematian dari ayam lama saja
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-22T10:00:00.000Z",
+  "jumlahKematian": 40,
+  "penyebabKematian": "Stress karena cuaca panas",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 40,
+  "jumlahDariAyamBaru": 0
+}
+
+###
+
+### 4. Create Mortalitas - Manual Split (Semua dari ayam baru)
+# Skenario: Semua 30 ekor kematian dari ayam baru saja
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-25T10:00:00.000Z",
+  "jumlahKematian": 30,
+  "penyebabKematian": "Keracunan pakan",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 0,
+  "jumlahDariAyamBaru": 30
+}
+
+###
+
+#####################################################################################
+### ERROR CASES - Manual Split Validation
+#####################################################################################
+
+### 5. ERROR - Manual Split: Total tidak cocok
+# JumlahDariAyamLama + JumlahDariAyamBaru harus = JumlahKematian
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-26T10:00:00.000Z",
+  "jumlahKematian": 50,
+  "penyebabKematian": "Test error",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 20,  // 20 + 25 = 45, tidak sama dengan 50!
+  "jumlahDariAyamBaru": 25
+}
+
+###
+
+### 6. ERROR - Manual Split: Missing split values
+# Harus isi JumlahDariAyamLama dan JumlahDariAyamBaru jika mode manual-split
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-27T10:00:00.000Z",
+  "jumlahKematian": 50,
+  "penyebabKematian": "Test error",
+  "mode": "manual-split"
+  // Missing: jumlahDariAyamLama dan jumlahDariAyamBaru
+}
+
+###
+
+### 7. ERROR - Manual Split: Negative values
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-28T10:00:00.000Z",
+  "jumlahKematian": 50,
+  "penyebabKematian": "Test error",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": -10,  // Negative tidak boleh
+  "jumlahDariAyamBaru": 60
+}
+
+###
+
+### 8. ERROR - Manual Split: Melebihi ayam yang ada
+# Jika input lebih besar dari total ayam yang hidup
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-29T10:00:00.000Z",
+  "jumlahKematian": 5000,  // Terlalu besar!
+  "penyebabKematian": "Test error",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 3000,
+  "jumlahDariAyamBaru": 2000
+}
+
+###
+
+### 9. ERROR - Invalid mode
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-30T10:00:00.000Z",
+  "jumlahKematian": 50,
+  "penyebabKematian": "Test error",
+  "mode": "invalid-mode"  // Mode tidak valid
+}
+
+###
+
+#####################################################################################
+### DENGAN FOTO (Base64)
+#####################################################################################
+
+### 10. Create Mortalitas - Manual Split dengan Foto
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-31T10:00:00.000Z",
+  "jumlahKematian": 25,
+  "penyebabKematian": "Penyakit dengan bukti foto",
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 15,
+  "jumlahDariAyamBaru": 10,
+  "fotoMortalitasBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCKAAX/2Q==",
+  "fotoMortalitasFileName": "mortalitas_manual_split.jpg"
+}
+
+###
+
+#####################################################################################
+### EXPLANATION
+#####################################################################################
+
+### PERBEDAAN MODE:
+###
+### 1. AUTO FIFO (mode: "auto-fifo")
+###    - Sistem otomatis pilih ayam mana yang mati
+###    - Prioritas: Ayam sisa/lama (IsAyamSisa=true) dulu, baru ayam baru
+###    - Menggunakan FIFO (First In First Out) - ayam terlama diprioritaskan
+###    - User hanya input: total jumlah kematian
+###
+### 2. MANUAL SPLIT (mode: "manual-split")
+###    - User yang tentukan berapa dari ayam lama dan berapa dari ayam baru
+###    - Lebih fleksibel - user bisa pilih mana yang mati
+###    - Validation: JumlahDariAyamLama + JumlahDariAyamBaru HARUS = JumlahKematian
+###    - Contoh use case: 
+###      * Ayam lama kondisi lemah ? input lebih banyak dari ayam lama
+###      * Ayam baru yang sakit ? input lebih banyak dari ayam baru
+###      * Mix 50-50 ? bagi rata
+###
+### KEUNTUNGAN MANUAL SPLIT:
+### - Lebih akurat dengan kondisi real di lapangan
+### - Petugas bisa input sesuai pengamatan
+### - Tidak selalu FIFO (karena bisa saja ayam baru yang lebih banyak mati)
+###
+### CONTOH SKENARIO REAL:
+### - Kandang punya 200 ayam lama + 800 ayam baru = 1000 ekor
+### - Hari ini mati 100 ekor
+### - Dari pengamatan:
+###   * 70 ekor dari ayam lama (karena sudah lemah)
+###   * 30 ekor dari ayam baru
+### - Input dengan mode manual-split:
+###   jumlahKematian: 100
+###   jumlahDariAyamLama: 70
+###   jumlahDariAyamBaru: 30

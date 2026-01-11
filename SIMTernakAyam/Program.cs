@@ -102,6 +102,7 @@ builder.Services.AddScoped<IChartService, ChartService>();
 builder.Services.AddScoped<IJurnalHarianService, JurnalHarianService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IHargaPasarService, HargaPasarService>();
+builder.Services.AddScoped<IFifoService, FifoService>();
 
 // Controller & JSON Config
 builder.Services.AddControllers(options =>

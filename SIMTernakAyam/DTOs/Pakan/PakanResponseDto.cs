@@ -63,10 +63,10 @@ namespace SIMTernakAyam.DTOs.Pakan
         {
             return stokTersisa switch
             {
-                0 => "Habis",
-                <= 10 => "Kritis",
-                <= 50 => "Menipis",
-                _ => "Aman"
+                0 => "Level 0",
+                <= 10 => "Level 1 - Perlu Restock Segera",
+                <= 50 => "Level 2 - Perlu Restock",
+                _ => "Level 3 - Stok Cukup"
             };
         }
 

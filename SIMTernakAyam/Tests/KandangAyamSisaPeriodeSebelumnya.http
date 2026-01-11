@@ -1,0 +1,72 @@
+### Test Get Kandang Detail with Ayam Sisa dari Periode Sebelumnya
+GET https://localhost:7195/api/kandangs/fd082b84-41c8-45d4-8480-ddb918f74cca
+Accept: application/json
+
+###
+
+### Expected Response Structure:
+### {
+###   "success": true,
+###   "message": "Berhasil mengambil detail kandang dengan history lengkap.",
+###   "data": {
+###     "id": "fd082b84-41c8-45d4-8480-ddb918f74cca",
+###     "namaKandang": "Kandang A",
+###     "kapasitas": 1000,
+###     "lokasi": "Blok A",
+###     "petugasId": "guid",
+###     "petugasNama": "John Doe",
+###     
+###     // Stock Info
+###     "jumlahAyamTerisi": 500,
+###     "kapasitasTersedia": 500,
+###     "persentaseTerisi": 50.00,
+###     "isKandangPenuh": false,
+###     "statusKapasitas": "Tersedia",
+###     
+###     // Summary
+###     "totalAyamMasuk": 2000,
+###     "totalPanen": 1200,
+###     "totalMortalitas": 300,
+###     "totalOperasional": 45,
+###     
+###     // ? NEW: Ayam Sisa dari Periode Sebelumnya
+###     "ayamSisaList": [
+###       {
+###         "id": "ayam-guid-1",
+###         "tanggalMasuk": "2024-01-01T00:00:00Z",
+###         "jumlahMasukAwal": 1000,
+###         "sisaHidup": 300,
+###         "alasanSisa": "Sisa dari periode 01/01/2024",
+###         "tanggalDitandaiSisa": null,
+###         "umurAyam": 90,
+###         "perluPerhatian": true
+###       },
+###       {
+###         "id": "ayam-guid-2",
+###         "tanggalMasuk": "2024-02-01T00:00:00Z",
+###         "jumlahMasukAwal": 500,
+###         "sisaHidup": 200,
+###         "alasanSisa": "Sisa dari periode 01/02/2024",
+###         "tanggalDitandaiSisa": null,
+###         "umurAyam": 60,
+###         "perluPerhatian": false
+###       }
+###     ],
+###     "totalAyamSisa": 500,
+###     
+###     // History sections...
+###     "historyAyamMasuk": [...],
+###     "historyPanen": [...],
+###     "historyMortalitas": [...],
+###     "historyOperasional": [...]
+###   }
+### }
+
+###
+
+### Notes:
+### - ayamSisaList: Menampilkan ayam dari batch LAMA (periode sebelumnya) yang masih ada sisanya
+### - Batch terbaru TIDAK akan muncul di ayamSisaList (karena itu periode aktif saat ini)
+### - Hanya tampil jika sisaHidup > 0
+### - perluPerhatian = true jika umurAyam > 60 hari (perlu segera dipanen)
+### - totalAyamSisa: Total semua sisa ayam dari periode sebelumnya

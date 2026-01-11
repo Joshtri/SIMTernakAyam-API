@@ -63,13 +63,17 @@ namespace SIMTernakAyam.Services
             };
         }
 
-        public async Task<PemilikDashboardDto> GetPemilikDashboardAsync()
+        public async Task<PemilikDashboardDto> GetPemilikDashboardAsync(int? year = null, int? month = null)
         {
-            var businessKpi = await GetBusinessKpiAsync();
-            var profitability = await GetProfitabilityAsync();
-            var comparisonAnalysis = await GetComparisonAnalysisAsync();
-            var strategicInsights = await GetStrategicInsightsAsync();
-            var monthlyTrends = await GetMonthlyTrendsAsync();
+            // Default to current month if not specified
+            var targetYear = year ?? DateTime.UtcNow.Year;
+            var targetMonth = month ?? DateTime.UtcNow.Month;
+
+            var businessKpi = await GetBusinessKpiAsync(targetYear, targetMonth);
+            var profitability = await GetProfitabilityAsync(targetYear, targetMonth);
+            var comparisonAnalysis = await GetComparisonAnalysisAsync(targetYear, targetMonth);
+            var strategicInsights = await GetStrategicInsightsAsync(targetYear, targetMonth);
+            var monthlyTrends = await GetMonthlyTrendsAsync(targetYear, targetMonth);
 
             return new PemilikDashboardDto
             {
@@ -205,11 +209,18 @@ namespace SIMTernakAyam.Services
 
             foreach (var pakan in lowStockPakan)
             {
+                var statusLevel = pakan.StokKg switch
+                {
+                    0 => "Level 0",
+                    <= 10 => "Level 1",
+                    _ => "Level 2"
+                };
+
                 alerts.Add(new AlertDto
                 {
                     Type = "Stock",
-                    Message = $"Stok pakan {pakan.NamaPakan} rendah ({pakan.StokKg} kg tersisa)",
-                    Severity = pakan.StokKg <= 5 ? "Critical" : "Medium",
+                    Message = $"Stok pakan {pakan.NamaPakan} {statusLevel} ({pakan.StokKg} kg tersisa) - Perlu Restock",
+                    Severity = pakan.StokKg <= 10 ? "Critical" : "Warning",
                     CreatedAt = DateTime.UtcNow,
                     RelatedEntityId = pakan.Id,
                     RelatedEntityName = pakan.NamaPakan
@@ -218,11 +229,18 @@ namespace SIMTernakAyam.Services
 
             foreach (var vaksin in lowStockVaksin)
             {
+                var statusLevel = vaksin.Stok switch
+                {
+                    0 => "Level 0",
+                    <= 2 => "Level 1",
+                    _ => "Level 2"
+                };
+
                 alerts.Add(new AlertDto
                 {
                     Type = "Stock",
-                    Message = $"Stok vaksin {vaksin.NamaVaksin} rendah ({vaksin.Stok} tersisa)",
-                    Severity = vaksin.Stok <= 2 ? "Critical" : "Medium",
+                    Message = $"Stok vaksin {vaksin.NamaVaksin} {statusLevel} ({vaksin.Stok} tersisa) - Perlu Restock",
+                    Severity = vaksin.Stok <= 2 ? "Critical" : "Warning",
                     CreatedAt = DateTime.UtcNow,
                     RelatedEntityId = vaksin.Id,
                     RelatedEntityName = vaksin.NamaVaksin
@@ -261,7 +279,7 @@ namespace SIMTernakAyam.Services
                 .Where(p => p.TanggalPanen.Month == currentMonth && p.TanggalPanen.Year == currentYear)
                 .SumAsync(p => p.JumlahEkorPanen);
 
-            var avgMortalityRate = await CalculateAverageMortalityRateAsync();
+            var avgMortalityRate = await CalculateAverageMortalityRateAsync(currentYear, currentMonth);
             var feedConversionRatio = await CalculateFeedConversionRatioAsync();
             var activeKandangs = await _context.Kandangs.CountAsync();
 
@@ -422,7 +440,7 @@ namespace SIMTernakAyam.Services
                     Name = p.NamaPakan,
                     CurrentStock = (int)p.StokKg,
                     MinimumStock = 50,
-                    Status = p.StokKg <= 20 ? "Critical" : "Warning"
+                    Status = p.StokKg == 0 ? "Level 0" : p.StokKg <= 10 ? "Level 1" : "Level 2"
                 })
                 .ToListAsync();
 
@@ -434,7 +452,7 @@ namespace SIMTernakAyam.Services
                     Name = v.NamaVaksin,
                     CurrentStock = v.Stok,
                     MinimumStock = 10,
-                    Status = v.Stok <= 5 ? "Critical" : "Warning"
+                    Status = v.Stok == 0 ? "Level 0" : v.Stok <= 2 ? "Level 1" : "Level 2"
                 })
                 .ToListAsync();
 
@@ -442,8 +460,8 @@ namespace SIMTernakAyam.Services
             {
                 LowStockPakan = lowStockPakan,
                 LowStockVaksin = lowStockVaksin,
-                CriticalStockCount = lowStockPakan.Count(p => p.Status == "Critical") + lowStockVaksin.Count(v => v.Status == "Critical"),
-                WarningStockCount = lowStockPakan.Count(p => p.Status == "Warning") + lowStockVaksin.Count(v => v.Status == "Warning")
+                CriticalStockCount = lowStockPakan.Count(p => p.Status == "Level 0" || p.Status == "Level 1") + lowStockVaksin.Count(v => v.Status == "Level 0" || v.Status == "Level 1"),
+                WarningStockCount = lowStockPakan.Count(p => p.Status == "Level 2") + lowStockVaksin.Count(v => v.Status == "Level 2")
             };
         }
 
@@ -589,29 +607,29 @@ namespace SIMTernakAyam.Services
             };
         }
 
-        private async Task<BusinessKpiDto> GetBusinessKpiAsync()
+        private async Task<BusinessKpiDto> GetBusinessKpiAsync(int targetYear, int targetMonth)
         {
-            var now = DateTime.UtcNow;
-            var currentMonth = now.Month;
-            var currentYear = now.Year;
-            var currentMonthStart = DateTime.SpecifyKind(new DateTime(currentYear, currentMonth, 1), DateTimeKind.Utc);
+            var currentMonthStart = DateTime.SpecifyKind(new DateTime(targetYear, targetMonth, 1), DateTimeKind.Utc);
+            var currentMonthEnd = currentMonthStart.AddMonths(1);
 
             var monthlyRevenue = await _context.Panens
-                .Where(p => p.TanggalPanen >= currentMonthStart)
+                .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
             var monthlyExpenses = await _context.Biayas
-                .Where(b => b.Tanggal >= currentMonthStart)
+                .Where(b => b.Tanggal >= currentMonthStart && b.Tanggal < currentMonthEnd)
                 .SumAsync(b => b.Jumlah);
 
             var monthlyProfit = monthlyRevenue - monthlyExpenses;
 
-            // Calculate ROI (simplified calculation)
+            // Calculate ROI (simplified calculation) - for the full year up to target month
             var yearlyExpenses = await _context.Biayas
-                .Where(b => b.Tanggal.Year == currentYear)
+                .Where(b => b.Tanggal.Year == targetYear &&
+                           (b.Tanggal.Month < targetMonth || (b.Tanggal.Month == targetMonth && b.Tanggal < currentMonthEnd)))
                 .SumAsync(b => b.Jumlah);
             var yearlyRevenue = await _context.Panens
-                .Where(p => p.TanggalPanen.Year == currentYear)
+                .Where(p => p.TanggalPanen.Year == targetYear &&
+                           (p.TanggalPanen.Month < targetMonth || (p.TanggalPanen.Month == targetMonth && p.TanggalPanen < currentMonthEnd)))
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
             var roi = yearlyExpenses > 0 ? (double)(yearlyRevenue - yearlyExpenses) / (double)yearlyExpenses * 100 : 0;
 
@@ -619,7 +637,7 @@ namespace SIMTernakAyam.Services
 
             // Calculate average productivity (simplified as average weight gain)
             var avgProductivity = await _context.Panens
-                .Where(p => p.TanggalPanen >= currentMonthStart)
+                .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .AverageAsync(p => (double?)p.BeratRataRata) ?? 0;
 
             return new BusinessKpiDto
@@ -634,26 +652,24 @@ namespace SIMTernakAyam.Services
             };
         }
 
-        private async Task<ProfitabilityDto> GetProfitabilityAsync()
+        private async Task<ProfitabilityDto> GetProfitabilityAsync(int targetYear, int targetMonth)
         {
-            var now = DateTime.UtcNow;
-            var currentMonth = now.Month;
-            var currentYear = now.Year;
-            var currentMonthStart = DateTime.SpecifyKind(new DateTime(currentYear, currentMonth, 1), DateTimeKind.Utc);
+            var currentMonthStart = DateTime.SpecifyKind(new DateTime(targetYear, targetMonth, 1), DateTimeKind.Utc);
+            var currentMonthEnd = currentMonthStart.AddMonths(1);
 
             var revenue = await _context.Panens
-                .Where(p => p.TanggalPanen >= currentMonthStart)
+                .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
             var operatingExpenses = await _context.Biayas
-                .Where(b => b.Tanggal >= currentMonthStart)
+                .Where(b => b.Tanggal >= currentMonthStart && b.Tanggal < currentMonthEnd)
                 .SumAsync(b => b.Jumlah);
 
             var grossProfit = revenue;
             var netProfit = revenue - operatingExpenses;
 
             var totalKgPanen = await _context.Panens
-                .Where(p => p.TanggalPanen >= currentMonthStart)
+                .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata);
 
             var costPerKg = totalKgPanen > 0 ? (decimal)operatingExpenses / (decimal)totalKgPanen : 0;
@@ -673,48 +689,55 @@ namespace SIMTernakAyam.Services
             };
         }
 
-        private async Task<ComparisonAnalysisDto> GetComparisonAnalysisAsync()
+        private async Task<ComparisonAnalysisDto> GetComparisonAnalysisAsync(int targetYear, int targetMonth)
         {
-            var currentMonth = DateTime.UtcNow;
-            var previousMonth = currentMonth.AddMonths(-1);
-            var currentYear = currentMonth.Year;
-            var previousYear = currentYear - 1;
+            var currentMonthDate = new DateTime(targetYear, targetMonth, 1);
+            var previousMonthDate = currentMonthDate.AddMonths(-1);
+            var previousYear = targetYear - 1;
+
+            var currentMonthStart = DateTime.SpecifyKind(new DateTime(targetYear, targetMonth, 1), DateTimeKind.Utc);
+            var currentMonthEnd = currentMonthStart.AddMonths(1);
+
+            var previousMonthStart = DateTime.SpecifyKind(new DateTime(previousMonthDate.Year, previousMonthDate.Month, 1), DateTimeKind.Utc);
+            var previousMonthEnd = previousMonthStart.AddMonths(1);
 
             // Current month data
             var currentMonthRevenue = await _context.Panens
-                .Where(p => p.TanggalPanen.Month == currentMonth.Month && p.TanggalPanen.Year == currentMonth.Year)
+                .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
             var currentMonthExpenses = await _context.Biayas
-                .Where(b => b.Tanggal.Month == currentMonth.Month && b.Tanggal.Year == currentMonth.Year)
+                .Where(b => b.Tanggal >= currentMonthStart && b.Tanggal < currentMonthEnd)
                 .SumAsync(b => b.Jumlah);
 
             // Previous month data
             var previousMonthRevenue = await _context.Panens
-                .Where(p => p.TanggalPanen.Month == previousMonth.Month && p.TanggalPanen.Year == previousMonth.Year)
+                .Where(p => p.TanggalPanen >= previousMonthStart && p.TanggalPanen < previousMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
             var previousMonthExpenses = await _context.Biayas
-                .Where(b => b.Tanggal.Month == previousMonth.Month && b.Tanggal.Year == previousMonth.Year)
+                .Where(b => b.Tanggal >= previousMonthStart && b.Tanggal < previousMonthEnd)
                 .SumAsync(b => b.Jumlah);
 
             // Calculate month-over-month changes
             var revenueChange = previousMonthRevenue > 0 ? (double)((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 : 0;
-            var profitChange = previousMonthExpenses > 0 ? (double)(((currentMonthRevenue - currentMonthExpenses) - (previousMonthRevenue - previousMonthExpenses)) / (previousMonthRevenue - previousMonthExpenses)) * 100 : 0;
+            var currentMonthProfit = currentMonthRevenue - currentMonthExpenses;
+            var previousMonthProfit = previousMonthRevenue - previousMonthExpenses;
+            var profitChange = previousMonthProfit > 0 ? (double)((currentMonthProfit - previousMonthProfit) / previousMonthProfit) * 100 : 0;
 
-            // Current year data
+            // Year-to-date comparison
             var currentYearRevenue = await _context.Panens
-                .Where(p => p.TanggalPanen.Year == currentYear)
+                .Where(p => p.TanggalPanen.Year == targetYear && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
             var previousYearRevenue = await _context.Panens
-                .Where(p => p.TanggalPanen.Year == previousYear)
+                .Where(p => p.TanggalPanen.Year == previousYear && p.TanggalPanen < currentMonthEnd.AddYears(-1))
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
             var revenueGrowth = previousYearRevenue > 0 ? (double)((currentYearRevenue - previousYearRevenue) / previousYearRevenue) * 100 : 0;
 
             // Get current mortality rate
-            var currentMortalityRate = await CalculateAverageMortalityRateAsync();
+            var currentMortalityRate = await CalculateAverageMortalityRateAsync(targetYear, targetMonth);
 
             return new ComparisonAnalysisDto
             {
@@ -745,14 +768,14 @@ namespace SIMTernakAyam.Services
             };
         }
 
-        private async Task<StrategicInsightsDto> GetStrategicInsightsAsync()
+        private async Task<StrategicInsightsDto> GetStrategicInsightsAsync(int targetYear, int targetMonth)
         {
             var recommendations = new List<string>();
             var opportunities = new List<string>();
             var risks = new List<string>();
 
             // Analyze current performance and generate insights
-            var avgMortalityRate = await CalculateAverageMortalityRateAsync();
+            var avgMortalityRate = await CalculateAverageMortalityRateAsync(targetYear, targetMonth);
             var kandangUtilization = await GetKandangUtilizationAsync();
             var lowStockItems = await GetLowStockItemsCountAsync();
 
@@ -797,22 +820,25 @@ namespace SIMTernakAyam.Services
             };
         }
 
-        private async Task<MonthlyTrendsDto> GetMonthlyTrendsAsync()
+        private async Task<MonthlyTrendsDto> GetMonthlyTrendsAsync(int targetYear, int targetMonth)
         {
             var revenueData = new List<MonthlyDataDto>();
             var profitData = new List<MonthlyDataDto>();
-            var now = DateTime.UtcNow;
+            var targetDate = new DateTime(targetYear, targetMonth, 1);
 
-            // Get last 6 months data
+            // Get last 6 months data ending at target month
             for (int i = 5; i >= 0; i--)
             {
-                var date = now.AddMonths(-i);
+                var date = targetDate.AddMonths(-i);
+                var monthStart = DateTime.SpecifyKind(new DateTime(date.Year, date.Month, 1), DateTimeKind.Utc);
+                var monthEnd = monthStart.AddMonths(1);
+
                 var monthRevenue = await _context.Panens
-                    .Where(p => p.TanggalPanen.Month == date.Month && p.TanggalPanen.Year == date.Year)
+                    .Where(p => p.TanggalPanen >= monthStart && p.TanggalPanen < monthEnd)
                     .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
                 var monthExpense = await _context.Biayas
-                    .Where(b => b.Tanggal.Month == date.Month && b.Tanggal.Year == date.Year)
+                    .Where(b => b.Tanggal >= monthStart && b.Tanggal < monthEnd)
                     .SumAsync(b => b.Jumlah);
 
                 var monthProfit = monthRevenue - monthExpense;
@@ -864,15 +890,14 @@ namespace SIMTernakAyam.Services
             return "Healthy";
         }
 
-        private async Task<double> CalculateAverageMortalityRateAsync()
+        private async Task<double> CalculateAverageMortalityRateAsync(int targetYear, int targetMonth)
         {
-            var now = DateTime.UtcNow;
-            var currentMonth = now.Month;
-            var currentYear = now.Year;
+            var monthStart = DateTime.SpecifyKind(new DateTime(targetYear, targetMonth, 1), DateTimeKind.Utc);
+            var monthEnd = monthStart.AddMonths(1);
 
             var totalAyams = await _context.Ayams.SumAsync(a => a.JumlahMasuk);
             var totalMortality = await _context.Mortalitas
-                .Where(m => m.TanggalKematian.Month == currentMonth && m.TanggalKematian.Year == currentYear)
+                .Where(m => m.TanggalKematian >= monthStart && m.TanggalKematian < monthEnd)
                 .SumAsync(m => m.JumlahKematian);
 
             return totalAyams > 0 ? (double)totalMortality / totalAyams * 100 : 0;

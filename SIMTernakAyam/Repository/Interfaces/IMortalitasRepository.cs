@@ -16,6 +16,7 @@ namespace SIMTernakAyam.Repository.Interfaces
         // New methods for calculations
         Task<IEnumerable<Mortalitas>> GetMortalitasWithCalculationsAsync();
         Task<int> GetTotalAyamBeforeMortalityAsync(Guid ayamId, DateTime tanggalKematian);
+        Task<int> GetTotalAyamAfterMortalityAsync(Guid ayamId, Guid mortalitasId, DateTime tanggalKematian);
         Task<int> GetKandangCapacityAsync(Guid kandangId);
         Task<IEnumerable<Mortalitas>> SearchMortalitasAsync(string? search = null, Guid? kandangId = null);
 

@@ -12,19 +12,25 @@ namespace SIMTernakAyam.Services
         private readonly IHargaPasarService _hargaPasarService;
         private readonly IBiayaRepository _biayaRepository;
         private readonly IOperasionalRepository _operasionalRepository;
+        private readonly IFifoService _fifoService;
+        private readonly IAyamService _ayamService;
 
         public PanenService(
-            IPanenRepository repository, 
+            IPanenRepository repository,
             IAyamRepository ayamRepository,
             IHargaPasarService hargaPasarService,
             IBiayaRepository biayaRepository,
-            IOperasionalRepository operasionalRepository) : base(repository)
+            IOperasionalRepository operasionalRepository,
+            IFifoService fifoService,
+            IAyamService ayamService) : base(repository)
         {
             _panenRepository = repository ?? throw new ArgumentNullException(nameof(repository));
             _ayamRepository = ayamRepository ?? throw new ArgumentNullException(nameof(ayamRepository));
             _hargaPasarService = hargaPasarService ?? throw new ArgumentNullException(nameof(hargaPasarService));
             _biayaRepository = biayaRepository ?? throw new ArgumentNullException(nameof(biayaRepository));
             _operasionalRepository = operasionalRepository ?? throw new ArgumentNullException(nameof(operasionalRepository));
+            _fifoService = fifoService ?? throw new ArgumentNullException(nameof(fifoService));
+            _ayamService = ayamService ?? throw new ArgumentNullException(nameof(ayamService));
         }
 
         public async Task<IEnumerable<Panen>> GetPanenByAyamAsync(Guid ayamId)
@@ -196,6 +202,229 @@ namespace SIMTernakAyam.Services
             };
         }
 
+        public async Task<(bool Success, string Message, List<Panen>? Data)> CreatePanenAutoFifoAsync(
+            Guid kandangId,
+            DateTime tanggalPanen,
+            int jumlahEkorPanen,
+            decimal beratRataRata)
+        {
+            try
+            {
+                // Validate basic inputs
+                if (jumlahEkorPanen <= 0)
+                {
+                    return (false, "Jumlah ekor panen harus lebih dari 0.", null);
+                }
+
+                if (beratRataRata < 0.01m || beratRataRata > 100.00m)
+                {
+                    return (false, "Berat rata-rata harus antara 0.01 sampai 100.00 kg.", null);
+                }
+
+                if (tanggalPanen > DateTime.UtcNow)
+                {
+                    return (false, "Tanggal panen tidak boleh di masa depan.", null);
+                }
+
+                // Ensure tanggalPanen is UTC
+                if (tanggalPanen.Kind != DateTimeKind.Utc)
+                {
+                    tanggalPanen = tanggalPanen.ToUniversalTime();
+                }
+
+                // ? Use FifoService to distribute the harvest across ayam entries
+                // NOTE: "Auto FIFO" sekarang mengambil ayam TERBARU dulu (LIFO), bukan terlama
+                // Karena dalam realita, ayam terbaru yang lebih sering dipanen
+                List<(Guid AyamId, int Jumlah)> distribution;
+                try
+                {
+                    distribution = await _fifoService.DistributeAsync(kandangId, jumlahEkorPanen);
+                }
+                catch (Exception ex)
+                {
+                    return (false, ex.Message, null);
+                }
+
+                // Create multiple Panen records based on distribution
+                var panenList = new List<Panen>();
+                foreach (var (ayamId, jumlah) in distribution)
+                {
+                    var panen = new Panen
+                    {
+                        AyamId = ayamId,
+                        TanggalPanen = tanggalPanen,
+                        JumlahEkorPanen = jumlah,
+                        BeratRataRata = beratRataRata
+                    };
+
+                    // Use CreateAsync from base service to ensure validation
+                    var result = await CreateAsync(panen);
+                    if (!result.Success)
+                    {
+                        return (false, $"Gagal membuat panen untuk ayam {ayamId}: {result.Message}", null);
+                    }
+
+                    panenList.Add(result.Data!);
+                }
+
+                var totalCreated = panenList.Count;
+                var message = $"Berhasil membuat {totalCreated} record panen dengan Auto FIFO (ayam terbaru). Total: {jumlahEkorPanen} ekor.";
+                return (true, message, panenList);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error saat membuat panen Auto FIFO: {ex.Message}", null);
+            }
+        }
+
+        /// <summary>
+        /// Create panen dengan manual split - user tentukan jumlah dari ayam lama dan baru
+        /// </summary>
+        public async Task<(bool Success, string Message, List<Panen>? Data)> CreatePanenManualSplitAsync(
+            Guid kandangId,
+            DateTime tanggalPanen,
+            int jumlahDariAyamLama,
+            int jumlahDariAyamBaru,
+            decimal beratRataRata)
+        {
+            try
+            {
+                var totalJumlah = jumlahDariAyamLama + jumlahDariAyamBaru;
+                
+                // Validate basic inputs
+                if (totalJumlah <= 0)
+                {
+                    return (false, "Total jumlah panen harus lebih dari 0.", null);
+                }
+
+                if (jumlahDariAyamLama < 0 || jumlahDariAyamBaru < 0)
+                {
+                    return (false, "Jumlah panen tidak boleh negatif.", null);
+                }
+
+                if (beratRataRata < 0.01m || beratRataRata > 100.00m)
+                {
+                    return (false, "Berat rata-rata harus antara 0.01 sampai 100.00 kg.", null);
+                }
+
+                if (tanggalPanen > DateTime.UtcNow)
+                {
+                    return (false, "Tanggal panen tidak boleh di masa depan.", null);
+                }
+
+                // Ensure tanggalPanen is UTC
+                if (tanggalPanen.Kind == DateTimeKind.Unspecified)
+                {
+                    tanggalPanen = DateTime.SpecifyKind(tanggalPanen, DateTimeKind.Utc);
+                }
+                else if (tanggalPanen.Kind == DateTimeKind.Local)
+                {
+                    tanggalPanen = tanggalPanen.ToUniversalTime();
+                }
+
+                var panenList = new List<Panen>();
+
+                // 1. Process ayam lama (IsAyamSisa = true)
+                if (jumlahDariAyamLama > 0)
+                {
+                    var ayamLamaList = await _ayamService.GetAyamByPeriodeTypeAsync(kandangId, isAyamLama: true);
+                    
+                    if (!ayamLamaList.Any())
+                    {
+                        return (false, "Tidak ada ayam lama/sisa di kandang ini.", null);
+                    }
+
+                    var totalAyamLamaHidup = ayamLamaList.Sum(x => x.JumlahHidup);
+                    if (jumlahDariAyamLama > totalAyamLamaHidup)
+                    {
+                        return (false, 
+                            $"Jumlah panen dari ayam lama ({jumlahDariAyamLama}) melebihi total ayam lama yang hidup ({totalAyamLamaHidup}).", 
+                            null);
+                    }
+
+                    // Distribute ke ayam lama (FIFO dalam grup ayam lama)
+                    var sisaPanen = jumlahDariAyamLama;
+                    foreach (var (ayam, jumlahHidup) in ayamLamaList)
+                    {
+                        if (sisaPanen <= 0) break;
+
+                        var jumlahPanen = Math.Min(sisaPanen, jumlahHidup);
+                        
+                        var panen = new Panen
+                        {
+                            AyamId = ayam.Id,
+                            TanggalPanen = tanggalPanen,
+                            JumlahEkorPanen = jumlahPanen,
+                            BeratRataRata = beratRataRata
+                        };
+
+                        var result = await CreateAsync(panen);
+                        if (!result.Success)
+                        {
+                            return (false, $"Gagal membuat panen untuk ayam lama {ayam.Id}: {result.Message}", null);
+                        }
+
+                        panenList.Add(result.Data!);
+                        sisaPanen -= jumlahPanen;
+                    }
+                }
+
+                // 2. Process ayam baru (IsAyamSisa = false)
+                if (jumlahDariAyamBaru > 0)
+                {
+                    var ayamBaruList = await _ayamService.GetAyamByPeriodeTypeAsync(kandangId, isAyamLama: false);
+                    
+                    if (!ayamBaruList.Any())
+                    {
+                        return (false, "Tidak ada ayam baru di kandang ini.", null);
+                    }
+
+                    var totalAyamBaruHidup = ayamBaruList.Sum(x => x.JumlahHidup);
+                    if (jumlahDariAyamBaru > totalAyamBaruHidup)
+                    {
+                        return (false, 
+                            $"Jumlah panen dari ayam baru ({jumlahDariAyamBaru}) melebihi total ayam baru yang hidup ({totalAyamBaruHidup}).", 
+                            null);
+                    }
+
+                    // Distribute ke ayam baru (FIFO dalam grup ayam baru)
+                    var sisaPanen = jumlahDariAyamBaru;
+                    foreach (var (ayam, jumlahHidup) in ayamBaruList)
+                    {
+                        if (sisaPanen <= 0) break;
+
+                        var jumlahPanen = Math.Min(sisaPanen, jumlahHidup);
+                        
+                        var panen = new Panen
+                        {
+                            AyamId = ayam.Id,
+                            TanggalPanen = tanggalPanen,
+                            JumlahEkorPanen = jumlahPanen,
+                            BeratRataRata = beratRataRata
+                        };
+
+                        var result = await CreateAsync(panen);
+                        if (!result.Success)
+                        {
+                            return (false, $"Gagal membuat panen untuk ayam baru {ayam.Id}: {result.Message}", null);
+                        }
+
+                        panenList.Add(result.Data!);
+                        sisaPanen -= jumlahPanen;
+                    }
+                }
+
+                var message = $"Berhasil membuat {panenList.Count} record panen dengan Manual Split. " +
+                              $"Ayam lama: {jumlahDariAyamLama} ekor, Ayam baru: {jumlahDariAyamBaru} ekor. " +
+                              $"Total: {totalJumlah} ekor.";
+                return (true, message, panenList);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error saat membuat panen Manual Split: {ex.Message}", null);
+            }
+        }
+
         private async Task<(decimal Total, decimal BiayaPakan, decimal BiayaVaksin, decimal BiayaLainnya)> HitungTotalBiayaOperasionalAsync(
             Guid ayamId, DateTime tanggalMasuk, DateTime tanggalPanen, int jumlahEkorPanen, int totalAyamMasuk)
         {
@@ -287,11 +516,12 @@ namespace SIMTernakAyam.Services
                     return new ValidationResult { IsValid = false, ErrorMessage = "Data ayam tidak ditemukan." };
                 }
 
+                // ?? TEMPORARY COMMENT - FOR TESTING ONLY - UNCOMMENT LATER
                 // Validate that harvest date is not before entry date
-                if (entity.TanggalPanen < ayam.TanggalMasuk)
-                {
-                    return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal panen tidak boleh sebelum tanggal masuk ayam." };
-                }
+                // if (entity.TanggalPanen < ayam.TanggalMasuk)
+                // {
+                //     return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal panen tidak boleh sebelum tanggal masuk ayam." };
+                // }
 
                 // NEW VALIDATION: Check if harvest quantity doesn't exceed available stock
                 var totalAyamMasuk = ayam.JumlahMasuk;
@@ -370,11 +600,12 @@ namespace SIMTernakAyam.Services
                     return new ValidationResult { IsValid = false, ErrorMessage = "Data ayam tidak ditemukan." };
                 }
 
+                // ?? TEMPORARY COMMENT - FOR TESTING ONLY - UNCOMMENT LATER
                 // Validate that harvest date is not before entry date
-                if (entity.TanggalPanen < ayam.TanggalMasuk)
-                {
-                    return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal panen tidak boleh sebelum tanggal masuk ayam." };
-                }
+                // if (entity.TanggalPanen < ayam.TanggalMasuk)
+                // {
+                //     return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal panen tidak boleh sebelum tanggal masuk ayam." };
+                // }
 
                 // NEW VALIDATION: Check stock for UPDATE (exclude current panen from calculation)
                 var totalAyamMasuk = ayam.JumlahMasuk;

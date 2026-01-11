@@ -64,15 +64,15 @@ namespace SIMTernakAyam.DTOs.Vaksin
                 UpdateAt = vaksin.UpdateAt
             };
         }
-
+            
         private static string GetStatusStok(int stokTersisa)
         {
             return stokTersisa switch
             {
-                0 => "Habis",
-                <= 2 => "Kritis",
-                <= 5 => "Menipis",
-                _ => "Aman"
+                0 => "Level 0",
+                <= 2 => "Level 1 - Perlu Restock Segera",
+                <= 5 => "Level 2 - Perlu Restock",
+                _ => "Level 3 - Stok Cukup"
             };
         }
 

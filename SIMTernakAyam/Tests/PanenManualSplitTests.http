@@ -1,0 +1,273 @@
+### ? Test Manual Split - RECOMMENDED WAY
+### Create panen dengan distribusi manual antara ayam lama dan baru
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 30,
+  "jumlahDariAyamBaru": 20
+}
+
+###
+
+### ? Test Auto FIFO - Still Available
+### Sistem otomatis pilih ayam dengan FIFO
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "auto-fifo"
+}
+
+###
+
+### ? Test Manual Split - Success
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 30,
+  "jumlahDariAyamBaru": 20
+}
+
+###
+
+### ? Test Manual Split - All from Old
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 50,
+  "jumlahDariAyamBaru": 0
+}
+
+###
+
+### ? Test Manual Split - All from New
+POST /api/panens
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 30,
+  "beratRataRata": 1.8,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 0,
+  "jumlahDariAyamBaru": 30
+}
+
+###
+
+### ? Test Manual Split - Mixed Distribution
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 100,
+  "beratRataRata": 1.8,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 60,
+  "jumlahDariAyamBaru": 40
+}
+
+###
+
+### ? Test Auto FIFO (Still Works)
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "auto-fifo"
+}
+
+###
+
+### ? Test Manual Split - All from Old Ayam
+### Semua panen dari ayam lama
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 50,
+  "jumlahDariAyamBaru": 0
+}
+
+###
+
+### ? Test Manual Split - All from New Ayam
+### Semua panen dari ayam baru
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 30,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 0,
+  "jumlahDariAyamBaru": 30
+}
+
+###
+
+### ? Test Auto FIFO - Still Working
+### Auto FIFO masih berfungsi untuk panen
+
+POST {{baseUrl}}/api/panens/auto-fifo
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5
+}
+
+###
+
+### ? Test Manual Split - Invalid (Total Mismatch)
+### Should fail: jumlahDariAyamLama + jumlahDariAyamBaru != jumlahEkorPanen
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 25,
+  "jumlahDariAyamBaru": 20
+}
+
+# Expected Error:
+# "Total JumlahDariAyamLama (25) + JumlahDariAyamBaru (20) = 45 harus sama dengan JumlahEkorPanen (50)."
+
+###
+
+### ? Test Manual Split - Negative Values
+### Should fail: negative values not allowed
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": -10,
+  "jumlahDariAyamBaru": 60
+}
+
+# Expected Error:
+# "Jumlah panen tidak boleh negatif."
+
+###
+
+### ? Test Manual Split - Exceed Stock
+### Should fail: jumlah melebihi stok yang tersedia
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 999999,
+  "beratRataRata": 1.5,
+  "mode": "manual-split",
+  "jumlahDariAyamLama": 500000,
+  "jumlahDariAyamBaru": 499999
+}
+
+# Expected Error:
+# "Jumlah panen dari ayam lama (500000) melebihi total ayam lama yang hidup (xxx)."
+
+###
+
+### ? Test Auto FIFO (Still Available)
+### Auto FIFO mode still works for Panen
+
+POST {{baseUrl}}/api/panens/auto-fifo
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5
+}
+
+###
+
+### ? Test Auto FIFO via Mode
+### Using mode "auto-fifo" in main endpoint
+
+POST {{baseUrl}}/api/panens
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2024-01-15T10:00:00Z",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.5,
+  "mode": "auto-fifo"
+}
+
+###
+
+### Variables (Update these before testing)
+@baseUrl = https://localhost:7100
+@token = your_jwt_token_here
+@kandangId = your_kandang_id_here
