@@ -167,26 +167,46 @@ app.UseCors(corsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// ⭐ Swagger - ONLY available in Development environment (localhost)
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "SIM Ternak Ayam API v1");
-    c.RoutePrefix = "swagger";
-    c.DocumentTitle = "SIM Ternak Ayam API Documentation";
-    c.DefaultModelsExpandDepth(-1);
-    c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SIM Ternak Ayam API v1");
+        c.RoutePrefix = "swagger";
+        c.DocumentTitle = "SIM Ternak Ayam API Documentation";
+        c.DefaultModelsExpandDepth(-1);
+        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+    });
+
+    // Root Redirect to Swagger (Development only)
+    app.MapGet("/", () => Results.Redirect("/swagger"))
+        .WithName("Root")
+        .WithTags("Navigation")
+        .WithSummary("Redirect to API Documentation")
+        .ExcludeFromDescription();
+}
+else
+{
+    // Production: Root returns API info instead of redirecting to swagger
+    app.MapGet("/", () => Results.Ok(new
+    {
+        Message = "Welcome to SIM Ternak Ayam API",
+        Version = "1.0.0",
+        Health = "/health",
+        Status = "Running",
+        Environment = "Production",
+        Documentation = "Not available in production",
+        Timestamp = DateTime.UtcNow
+    }))
+        .WithName("Root")
+        .WithTags("Info")
+        .WithSummary("API Root Information");
+}
 
 // Controller Mapping
 app.MapControllers();
-
-// Root Redirect
-app.MapGet("/", () => Results.Redirect("/swagger"))
-    .WithName("Root")
-    .WithTags("Navigation")
-    .WithSummary("Redirect to API Documentation")
-    .ExcludeFromDescription();
 
 // Health Check Endpoint
 app.MapGet("/health", () => Results.Ok(new
