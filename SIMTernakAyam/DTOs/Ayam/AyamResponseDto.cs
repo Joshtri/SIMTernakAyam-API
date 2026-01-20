@@ -1,4 +1,6 @@
-﻿namespace SIMTernakAyam.DTOs.Ayam
+﻿using SIMTernakAyam.Models;
+
+namespace SIMTernakAyam.DTOs.Ayam
 {
     public class AyamResponseDto
     {

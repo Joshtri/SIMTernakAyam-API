@@ -160,6 +160,12 @@ namespace SIMTernakAyam.DTOs.Dashboard
         public double ReturnOnInvestment { get; set; }
         public int TotalAyamStock { get; set; }
         public double AverageProductivity { get; set; }
+        /// <summary>
+        /// Feed Conversion Ratio (FCR) - Rasio konversi pakan
+        /// Semakin rendah semakin baik (ideal: 1.5-1.8)
+        /// FCR = Total Pakan (kg) / Total Berat Ayam (kg)
+        /// </summary>
+        public double FeedConversionRatio { get; set; }
         public double CustomerSatisfaction { get; set; }
         public int MarketShare { get; set; }
     }
@@ -206,6 +212,15 @@ namespace SIMTernakAyam.DTOs.Dashboard
         public double YourMortalityRate { get; set; }
         public double IndustryAvgProductivity { get; set; }
         public double YourProductivity { get; set; }
+        /// <summary>
+        /// ? BARU: Industry average FCR (Feed Conversion Ratio)
+        /// Standard industri: 1.6 - 1.8
+        /// </summary>
+        public double IndustryAvgFcr { get; set; }
+        /// <summary>
+        /// ? BARU: Your actual FCR
+        /// </summary>
+        public double YourFcr { get; set; }
         public string PerformanceRating { get; set; } = string.Empty;
     }
 
@@ -221,6 +236,10 @@ namespace SIMTernakAyam.DTOs.Dashboard
     {
         public List<MonthlyDataDto> RevenueData { get; set; } = new();
         public List<MonthlyDataDto> ProfitData { get; set; } = new();
+        /// <summary>
+        /// ? BARU: Trend FCR 6 bulan terakhir
+        /// </summary>
+        public List<MonthlyFcrDataDto> FcrData { get; set; } = new();
         public List<MonthlyDataDto> ProductivityData { get; set; } = new();
         public List<MonthlyDataDto> MortalityData { get; set; } = new();
     }
@@ -230,5 +249,15 @@ namespace SIMTernakAyam.DTOs.Dashboard
         public string Month { get; set; } = string.Empty;
         public decimal Value { get; set; }
         public double Percentage { get; set; }
+    }
+
+    /// <summary>
+    /// ? BARU: DTO khusus untuk FCR trend
+    /// </summary>
+    public class MonthlyFcrDataDto
+    {
+        public string Month { get; set; } = string.Empty;
+        public double FcrValue { get; set; }
+        public string Status { get; set; } = string.Empty; // Excellent (<1.6), Good (1.6-1.8), Fair (1.8-2.0), Poor (>2.0)
     }
 }

@@ -1,0 +1,297 @@
+### Dashboard Pemilik - Test Total Stok Ayam Berdasarkan Periode
+### File: DashboardStokAyamTests.http
+
+@baseUrl = http://localhost:5000/api
+@token = YOUR_JWT_TOKEN_HERE
+
+### 1. Test: Get Dashboard Pemilik - Current Month (Default)
+# Stok ayam harus dihitung sampai akhir bulan sekarang
+GET {{baseUrl}}/dashboard/pemilik
+Authorization: Bearer {{token}}
+
+### Expected Response:
+# {
+#   "success": true,
+#   "message": "Berhasil mengambil dashboard pemilik untuk 2025-01.",
+#   "data": {
+#     "businessKpi": {
+#       "totalAyamStock": 750  // ? Stok aktual = Total Masuk - Mortalitas - Panen (sampai sekarang)
+#     }
+#   }
+# }
+
+###
+
+### 2. Test: Get Dashboard Pemilik - Specific Month (Januari 2025)
+# Stok ayam harus dihitung sampai akhir Januari 2025
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### Expected Calculation:
+# totalAyamStock = (Total Ayam Masuk s/d 31 Jan 2025)
+#                - (Total Mortalitas s/d 31 Jan 2025)
+#                - (Total Panen s/d 31 Jan 2025)
+#
+# Contoh:
+# - Total Masuk: 1000 ekor
+# - Total Mortalitas: 50 ekor
+# - Total Panen: 200 ekor
+# = 1000 - 50 - 200 = 750 ekor ?
+
+###
+
+### 3. Test: Get Dashboard Pemilik - Past Month (Desember 2024)
+# Stok ayam harus dihitung sampai akhir Desember 2024
+GET {{baseUrl}}/dashboard/pemilik?month=2024-12
+Authorization: Bearer {{token}}
+
+### Expected:
+# totalAyamStock akan lebih kecil karena:
+# - Belum ada data ayam masuk di Januari 2025
+# - Hanya data sampai 31 Desember 2024
+
+###
+
+### 4. Test: Get Dashboard Pemilik - Future Month (Maret 2025)
+# Stok ayam dihitung sampai akhir Maret 2025
+GET {{baseUrl}}/dashboard/pemilik?month=2025-03
+Authorization: Bearer {{token}}
+
+### Expected:
+# totalAyamStock bisa lebih besar jika:
+# - Ada penambahan ayam di Feb & Maret
+# - Atau lebih kecil jika ada panen/mortalitas tinggi
+
+###
+
+### 5. Test: Verify Consistency - Compare All Metrics
+# Semua metrik harus konsisten dengan periode yang dipilih
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### Verify:
+# ? monthlyRevenue = revenue dari Januari 2025 saja
+# ? monthlyExpenses = expenses dari Januari 2025 saja
+# ? totalAyamStock = stok sampai akhir Januari 2025 ? FIXED!
+
+###
+
+### 6. Test: Edge Case - Empty Stock
+# Test ketika semua ayam sudah dipanen/mati
+GET {{baseUrl}}/dashboard/pemilik?month=2025-02
+Authorization: Bearer {{token}}
+
+### Expected:
+# totalAyamStock = 0 (Math.Max digunakan untuk prevent negative)
+# Jika: Total Masuk (500) - Mortalitas (200) - Panen (400) = -100
+# Result: Math.Max(0, -100) = 0 ?
+
+###
+
+### 7. Test: Historical Analysis - Trend Stok
+# Bandingkan stok di berbagai periode
+
+# Stok Desember 2024
+GET {{baseUrl}}/dashboard/pemilik?month=2024-12
+Authorization: Bearer {{token}}
+
+###
+
+# Stok Januari 2025
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+###
+
+# Stok Februari 2025
+GET {{baseUrl}}/dashboard/pemilik?month=2025-02
+Authorization: Bearer {{token}}
+
+### Analysis:
+# Trend stok ayam bisa dilihat dari perubahan totalAyamStock antar periode
+# - Naik = ada penambahan ayam baru
+# - Turun = ada panen/mortalitas tinggi
+
+###
+
+### 8. Test: Validation - Invalid Month Format
+GET {{baseUrl}}/dashboard/pemilik?month=01-2025
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "success": false,
+#   "message": "Format bulan tidak valid. Gunakan format YYYY-MM (contoh: 2025-01)"
+# }
+
+###
+
+### 9. Test: Validation - Invalid Month Value
+GET {{baseUrl}}/dashboard/pemilik?month=2025-13
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "success": false,
+#   "message": "Bulan harus antara 01-12"
+# }
+
+###
+
+### 10. Test: Validation - Invalid Year
+GET {{baseUrl}}/dashboard/pemilik?month=1999-01
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "success": false,
+#   "message": "Tahun tidak valid"
+# }
+
+###
+
+### === DIAGNOSTIC TESTS ===
+
+### 11. Get Raw Ayam Data for Verification
+# Untuk verifikasi manual perhitungan stok
+GET {{baseUrl}}/ayams
+Authorization: Bearer {{token}}
+
+### Check:
+# - Total JumlahMasuk dari semua Ayam
+# - Filter by TanggalMasuk untuk periode tertentu
+
+###
+
+### 12. Get Mortalitas Data for Verification
+GET {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+
+### Check:
+# - Total JumlahKematian
+# - Filter by TanggalKematian untuk periode tertentu
+
+###
+
+### 13. Get Panen Data for Verification
+GET {{baseUrl}}/panens
+Authorization: Bearer {{token}}
+
+### Check:
+# - Total JumlahEkorPanen
+# - Filter by TanggalPanen untuk periode tertentu
+
+###
+
+### === MANUAL CALCULATION EXAMPLE ===
+
+### Scenario: Dashboard Januari 2025
+# 
+# Step 1: Get Total Ayam Masuk (sampai 31 Jan 2025)
+# Query: SELECT SUM(JumlahMasuk) FROM Ayams WHERE TanggalMasuk < '2025-02-01'
+# Result: 1000 ekor
+#
+# Step 2: Get Total Mortalitas (sampai 31 Jan 2025)
+# Query: SELECT SUM(JumlahKematian) FROM Mortalitas WHERE TanggalKematian < '2025-02-01'
+# Result: 50 ekor
+#
+# Step 3: Get Total Panen (sampai 31 Jan 2025)
+# Query: SELECT SUM(JumlahEkorPanen) FROM Panens WHERE TanggalPanen < '2025-02-01'
+# Result: 200 ekor
+#
+# Step 4: Calculate Stock
+# totalAyamStock = Math.Max(0, 1000 - 50 - 200)
+#                = Math.Max(0, 750)
+#                = 750 ekor ?
+
+###
+
+### === COMPARISON: BEFORE vs AFTER FIX ===
+
+### BEFORE FIX (WRONG):
+# GET /api/dashboard/pemilik?month=2025-01
+# Response:
+# {
+#   "businessKpi": {
+#     "totalAyamStock": 6000  // ? ALL TIME data (semua ayam yang pernah masuk)
+#   }
+# }
+
+### AFTER FIX (CORRECT):
+# GET /api/dashboard/pemilik?month=2025-01
+# Response:
+# {
+#   "businessKpi": {
+#     "totalAyamStock": 750  // ? Stok aktual pada akhir Januari 2025
+#   }
+# }
+
+###
+
+### === INTEGRATION TEST ===
+
+### 14. Complete Dashboard Flow Test
+# Test complete flow untuk memastikan semua data konsisten
+
+# Step 1: Add Ayam di Januari
+POST {{baseUrl}}/ayams
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "jenisAyam": "Broiler",
+  "jumlahMasuk": 100,
+  "tanggalMasuk": "2025-01-15",
+  "hargaBeli": 20000
+}
+
+###
+
+# Step 2: Add Mortalitas di Januari
+POST {{baseUrl}}/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ayamId": "{{ayamId}}",
+  "jumlahKematian": 5,
+  "tanggalKematian": "2025-01-20",
+  "penyebab": "Penyakit"
+}
+
+###
+
+# Step 3: Add Panen di Januari
+POST {{baseUrl}}/panens
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ayamId": "{{ayamId}}",
+  "jumlahEkorPanen": 20,
+  "tanggalPanen": "2025-01-25",
+  "beratRataRata": 1.8
+}
+
+###
+
+# Step 4: Get Dashboard - Verify Stock Calculation
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### Expected Calculation:
+# Initial stock before Januari activities: X ekor
+# + Ayam masuk (Jan): +100 ekor
+# - Mortalitas (Jan): -5 ekor
+# - Panen (Jan): -20 ekor
+# = Total stock end of Jan: (X + 100 - 5 - 20) ekor ?
+
+###
+
+### Notes:
+# 1. ? totalAyamStock sekarang calculated based on END OF PERIOD
+# 2. ? Konsisten dengan monthlyRevenue dan monthlyExpenses yang juga filtered by period
+# 3. ? Mendukung historical analysis (bisa lihat stok di berbagai periode)
+# 4. ? Menggunakan Math.Max(0, ...) untuk prevent negative stock
+# 5. ? Data lebih accurate dan meaningful untuk decision making

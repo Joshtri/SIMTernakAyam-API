@@ -1,0 +1,410 @@
+### Dashboard Pemilik - FCR (Feed Conversion Ratio) Tests
+### File: DashboardFcrTests.http
+
+@baseUrl = http://localhost:5000/api
+@token = YOUR_JWT_TOKEN_HERE
+
+### === FCR IN DASHBOARD PEMILIK ===
+
+### 1. Get Dashboard Pemilik - Current Month with FCR
+# FCR akan ditampilkan di businessKpi
+GET {{baseUrl}}/dashboard/pemilik
+Authorization: Bearer {{token}}
+
+### Expected Response (New Fields):
+# {
+#   "businessKpi": {
+#     "feedConversionRatio": 1.68,  // ? BARU: FCR untuk bulan ini
+#     ...
+#   },
+#   "comparisonAnalysis": {
+#     "industryBenchmark": {
+#       "industryAvgFcr": 1.7,      // ? BARU: Industry standard
+#       "yourFcr": 1.68,             // ? BARU: Your actual FCR
+#       ...
+#     }
+#   },
+#   "strategicInsights": {
+#     "recommendations": [
+#       "FCR sangat baik (1.68) - Pertahankan praktik pemberian pakan saat ini"
+#     ],
+#     "keySuccessFactors": [
+#       "Optimalisasi efisiensi pakan (FCR < 1.8)",
+#       "Monitoring FCR secara berkala untuk efisiensi maksimal"
+#     ]
+#   },
+#   "monthlyTrends": {
+#     "fcrData": [  // ? BARU: FCR trend 6 bulan
+#       {
+#         "month": "Jan 2025",
+#         "fcrValue": 1.68,
+#         "status": "Good"
+#       }
+#     ]
+#   }
+# }
+
+###
+
+### 2. Get Dashboard Pemilik - Specific Month
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### Verify:
+# - FCR calculated for January 2025
+# - Formula: Total Pakan (Jan) / Total Berat Ayam Panen (Jan)
+
+###
+
+### 3. Dashboard Comparison - Before vs After FCR
+
+### BEFORE (without FCR):
+# GET /api/dashboard/pemilik
+# {
+#   "businessKpi": {
+#     "monthlyRevenue": 50000000,
+#     "monthlyProfit": 20000000,
+#     "returnOnInvestment": 15.5,
+#     "totalAyamStock": 750,
+#     "averageProductivity": 85.2,
+#     // ? NO FCR DATA
+#     "customerSatisfaction": 4.2,
+#     "marketShare": 15
+#   }
+# }
+
+### AFTER (with FCR):
+# GET /api/dashboard/pemilik
+# {
+#   "businessKpi": {
+#     "monthlyRevenue": 50000000,
+#     "monthlyProfit": 20000000,
+#     "returnOnInvestment": 15.5,
+#     "totalAyamStock": 750,
+#     "averageProductivity": 85.2,
+#     "feedConversionRatio": 1.68,  // ? NEW METRIC
+#     "customerSatisfaction": 4.2,
+#     "marketShare": 15
+#   }
+# }
+
+###
+
+### === FCR CALCULATION VERIFICATION ===
+
+### 4. Manual FCR Calculation Test
+
+# Step 1: Get Total Pakan for January 2025
+GET {{baseUrl}}/operasionals?startDate=2025-01-01&endDate=2025-01-31
+Authorization: Bearer {{token}}
+
+### Calculate:
+# Total Pakan = SUM(operasional.jumlah WHERE pakanId != null)
+# Example: 1680 kg
+
+###
+
+# Step 2: Get Total Berat Ayam Panen for January 2025
+GET {{baseUrl}}/panens?startDate=2025-01-01&endDate=2025-01-31
+Authorization: Bearer {{token}}
+
+### Calculate:
+# Total Berat = SUM(jumlahEkorPanen * beratRataRata)
+# Example: 1000 kg
+
+###
+
+# Step 3: Calculate FCR manually
+# FCR = Total Pakan / Total Berat
+# = 1680 / 1000
+# = 1.68 ?
+
+# Step 4: Verify with Dashboard
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### Verify:
+# businessKpi.feedConversionRatio should be 1.68 ?
+
+###
+
+### === FCR TREND ANALYSIS ===
+
+### 5. Get 6-Month FCR Trend
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### Check monthlyTrends.fcrData:
+# [
+#   { "month": "Aug 2024", "fcrValue": 1.75, "status": "Good" },
+#   { "month": "Sep 2024", "fcrValue": 1.82, "status": "Fair" },
+#   { "month": "Oct 2024", "fcrValue": 1.70, "status": "Good" },
+#   { "month": "Nov 2024", "fcrValue": 1.65, "status": "Good" },
+#   { "month": "Dec 2024", "fcrValue": 1.72, "status": "Good" },
+#   { "month": "Jan 2025", "fcrValue": 1.68, "status": "Good" }
+# ]
+
+### Analyze:
+# - Trend going up or down?
+# - Any seasonal patterns?
+# - Months with "Poor" status need investigation
+
+###
+
+### === FCR STATUS CATEGORIES ===
+
+### 6. Test FCR Status Classification
+
+# Scenario A: Excellent FCR (<1.6)
+# Example: totalPakan = 1500kg, totalBerat = 1000kg
+# FCR = 1500/1000 = 1.5
+# Expected Status: "Excellent" ?
+
+# Scenario B: Good FCR (1.6-1.8)
+# Example: totalPakan = 1700kg, totalBerat = 1000kg
+# FCR = 1700/1000 = 1.7
+# Expected Status: "Good" ?
+
+# Scenario C: Fair FCR (1.8-2.0)
+# Example: totalPakan = 1900kg, totalBerat = 1000kg
+# FCR = 1900/1000 = 1.9
+# Expected Status: "Fair" ??
+
+# Scenario D: Poor FCR (>2.0)
+# Example: totalPakan = 2200kg, totalBerat = 1000kg
+# FCR = 2200/1000 = 2.2
+# Expected Status: "Poor" ?
+
+###
+
+### === FCR RECOMMENDATIONS TESTING ===
+
+### 7. Test Poor FCR Scenario (FCR > 2.0)
+# Dashboard should show critical recommendations
+
+GET {{baseUrl}}/dashboard/pemilik?month=2024-06
+Authorization: Bearer {{token}}
+
+### If FCR > 2.0, expect in strategicInsights:
+# {
+#   "recommendations": [
+#     "FCR terlalu tinggi (2.15) - Optimalisasi pemberian pakan dan evaluasi kualitas pakan",
+#     "Pertimbangkan untuk mengganti jenis pakan atau supplier"
+#   ],
+#   "risks": [
+#     "FCR tinggi dapat mengurangi profitabilitas secara signifikan"
+#   ]
+# }
+
+###
+
+### 8. Test Good FCR Scenario (FCR 1.6-1.8)
+
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### If FCR 1.6-1.8, expect in strategicInsights:
+# {
+#   "opportunities": [
+#     "FCR sangat baik (1.68) - Pertahankan praktik pemberian pakan saat ini"
+#   ]
+# }
+
+###
+
+### 9. Test Fair FCR Scenario (FCR 1.8-2.0)
+
+GET {{baseUrl}}/dashboard/pemilik?month=2024-09
+Authorization: Bearer {{token}}
+
+### If FCR 1.8-2.0, expect in strategicInsights:
+# {
+#   "recommendations": [
+#     "FCR saat ini 1.9 (cukup baik) - Masih ada ruang untuk improvement ke target 1.5-1.8"
+#   ],
+#   "opportunities": [
+#     "Optimalisasi jadwal dan jumlah pemberian pakan untuk menurunkan FCR"
+#   ]
+# }
+
+###
+
+### === BENCHMARK COMPARISON ===
+
+### 10. Test FCR vs Industry Benchmark
+
+GET {{baseUrl}}/dashboard/pemilik
+Authorization: Bearer {{token}}
+
+### Check comparisonAnalysis.industryBenchmark:
+# {
+#   "industryAvgFcr": 1.7,        // Industry standard
+#   "yourFcr": 1.68,               // Your actual (BETTER than industry)
+#   "performanceRating": "Good"
+# }
+
+### Performance Rating Logic:
+# - Excellent: mortality < 3% AND fcr < 1.6
+# - Good: mortality < 5% AND fcr < 1.8
+# - Above Average: mortality < 5.5% AND fcr < 2.0
+# - Average: mortality < 7% OR fcr < 2.2
+# - Below Average: both metrics poor
+
+###
+
+### === EDGE CASES ===
+
+### 11. No Data Scenario (No Panen in Period)
+# FCR should default to 1.8
+
+GET {{baseUrl}}/dashboard/pemilik?month=2024-01
+Authorization: Bearer {{token}}
+
+### Expected:
+# {
+#   "businessKpi": {
+#     "feedConversionRatio": 1.8  // Default value when no panen data
+#   }
+# }
+
+###
+
+### 12. Zero Feed Consumption
+# FCR calculation should handle division by zero
+
+GET {{baseUrl}}/dashboard/pemilik?month=2023-12
+Authorization: Bearer {{token}}
+
+### Expected:
+# - No crash
+# - FCR = 0 or default value
+# - fcrData status = "No Data"
+
+###
+
+### === COMPARISON: OPERATOR VS PEMILIK DASHBOARD ===
+
+### 13. FCR in Operator Dashboard (Already Exists)
+
+GET {{baseUrl}}/dashboard/operator
+Authorization: Bearer {{token}}
+
+### Response:
+# {
+#   "productivityStats": {
+#     "feedConversionRatio": 1.68  // ? Already in Operator
+#   }
+# }
+
+###
+
+### 14. FCR in Pemilik Dashboard (NEW!)
+
+GET {{baseUrl}}/dashboard/pemilik
+Authorization: Bearer {{token}}
+
+### Response:
+# {
+#   "businessKpi": {
+#     "feedConversionRatio": 1.68  // ? NOW in Pemilik too!
+#   },
+#   "comparisonAnalysis": {
+#     "industryBenchmark": {
+#       "yourFcr": 1.68  // ? With benchmark comparison
+#     }
+#   },
+#   "monthlyTrends": {
+#     "fcrData": [...]  // ? With 6-month trend
+#   }
+# }
+
+###
+
+### === INTEGRATION TESTS ===
+
+### 15. Complete Flow: Add Operasional ? Add Panen ? Check FCR
+
+# Step 1: Add pakan consumption
+POST {{baseUrl}}/operasionals
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggal": "2025-01-15",
+  "pakanId": "{{pakanId}}",
+  "jumlah": 100,
+  "keterangan": "FCR Test - Pakan"
+}
+
+###
+
+# Step 2: Add panen
+POST {{baseUrl}}/panens
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ayamId": "{{ayamId}}",
+  "tanggalPanen": "2025-01-20",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 2.0,
+  "hargaJual": 45000
+}
+
+###
+
+# Step 3: Check FCR updated in dashboard
+GET {{baseUrl}}/dashboard/pemilik?month=2025-01
+Authorization: Bearer {{token}}
+
+### Expected:
+# FCR should reflect the new data
+# If multiple operations, FCR = total pakan / total berat
+
+###
+
+### === NOTES ===
+
+# 1. FCR Formula:
+#    FCR = Total Pakan (kg) / Total Berat Ayam (kg)
+#    Lower is better (ideal: 1.5-1.8)
+
+# 2. FCR Categories:
+#    - Excellent: < 1.6
+#    - Good: 1.6 - 1.8
+#    - Fair: 1.8 - 2.0
+#    - Poor: > 2.0
+
+# 3. Industry Benchmark: 1.7 (average)
+
+# 4. Performance Rating now considers BOTH:
+#    - Mortality Rate
+#    - FCR
+#    More comprehensive performance assessment!
+
+# 5. Strategic Insights:
+#    - Recommendations based on FCR
+#    - Risk alerts for poor FCR
+#    - Opportunities for optimization
+
+# 6. Trend Analysis:
+#    - 6-month FCR history
+#    - Status for each month
+#    - Pattern identification
+
+###
+
+### === SUCCESS CRITERIA ===
+
+# ? FCR appears in businessKpi
+# ? FCR benchmark in comparisonAnalysis
+# ? FCR trend in monthlyTrends (6 months)
+# ? FCR-based recommendations in strategicInsights
+# ? Performance rating considers FCR
+# ? Correct FCR calculation
+# ? Proper status categorization
+# ? Handles edge cases (no data, zero values)
+# ? Consistent across different time periods
+
+###

@@ -535,73 +535,12 @@ namespace SIMTernakAyam.Services
             }
         }
 
-        /// <summary>
-        /// Hook yang dipanggil setelah CREATE mortalitas - kurangi JumlahMasuk di tabel Ayam
-        /// </summary>
-        protected override async Task AfterCreateAsync(Mortalitas entity)
-        {
-            try
-            {
-                // Get ayam record
-                var ayam = await _ayamRepository.GetByIdAsync(entity.AyamId);
-                if (ayam == null)
-                {
-                    throw new Exception($"Ayam dengan ID {entity.AyamId} tidak ditemukan.");
-                }
+        // REMOVED: AfterCreateAsync yang mengurangi JumlahMasuk
+        // JumlahMasuk seharusnya TIDAK PERNAH berubah (data historis)
+        // Sisa ayam dihitung dengan: JumlahMasuk - TotalMortalitas - TotalPanen
 
-                // Kurangi JumlahMasuk dengan jumlah kematian
-                ayam.JumlahMasuk -= entity.JumlahKematian;
-
-                // Validasi JumlahMasuk tidak boleh negatif
-                if (ayam.JumlahMasuk < 0)
-                {
-                    throw new Exception($"JumlahMasuk tidak boleh negatif setelah dikurangi {entity.JumlahKematian} ekor kematian.");
-                }
-
-                // Update ayam record
-                _ayamRepository.UpdateAsync(ayam);
-                await _ayamRepository.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                // Log error (di production harusnya pakai proper logging)
-                Console.WriteLine($"Error di AfterCreateAsync Mortalitas: {ex.Message}");
-                throw; // Re-throw agar error terdeteksi
-            }
-
-            await base.AfterCreateAsync(entity);
-        }
-
-        /// <summary>
-        /// Hook yang dipanggil setelah DELETE mortalitas - kembalikan JumlahMasuk di tabel Ayam (rollback)
-        /// </summary>
-        protected override async Task AfterDeleteAsync(Mortalitas entity)
-        {
-            try
-            {
-                // Get ayam record
-                var ayam = await _ayamRepository.GetByIdAsync(entity.AyamId);
-                if (ayam == null)
-                {
-                    throw new Exception($"Ayam dengan ID {entity.AyamId} tidak ditemukan.");
-                }
-
-                // Kembalikan JumlahMasuk (rollback)
-                ayam.JumlahMasuk += entity.JumlahKematian;
-
-                // Update ayam record
-                _ayamRepository.UpdateAsync(ayam);
-                await _ayamRepository.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                // Log error (di production harusnya pakai proper logging)
-                Console.WriteLine($"Error di AfterDeleteAsync Mortalitas: {ex.Message}");
-                throw; // Re-throw agar error terdeteksi
-            }
-
-            await base.AfterDeleteAsync(entity);
-        }
+        // REMOVED: AfterDeleteAsync yang mengembalikan JumlahMasuk
+        // Karena JumlahMasuk tidak lagi diubah saat CREATE, tidak perlu rollback saat DELETE
 
         /// <summary>
         /// Convert image file to base64 string

@@ -616,9 +616,9 @@ namespace SIMTernakAyam.Services
                 .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
-            var monthlyExpenses = await _context.Biayas
-                .Where(b => b.Tanggal >= currentMonthStart && b.Tanggal < currentMonthEnd)
-                .SumAsync(b => b.Jumlah);
+            // Hitung biaya yang MATCH dengan ayam yang dipanen di bulan ini
+            // Biaya dihitung dari TanggalMasuk ayam sampai TanggalPanen (bukan per bulan kalender)
+            var monthlyExpenses = await CalculateMatchedExpensesAsync(targetYear, targetMonth);
 
             var monthlyProfit = monthlyRevenue - monthlyExpenses;
 
@@ -633,12 +633,38 @@ namespace SIMTernakAyam.Services
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
             var roi = yearlyExpenses > 0 ? (double)(yearlyRevenue - yearlyExpenses) / (double)yearlyExpenses * 100 : 0;
 
-            var totalAyamStock = await _context.Ayams.SumAsync(a => a.JumlahMasuk);
+            // Calculate actual ayam stock at the end of target month
+            // Stock = Ayam masuk (cumulative up to end of month) - Mortalitas - Panen
+            // Use cutoff: minimum of (today, end of target month) to avoid showing data for future months
+            var today = DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(1), DateTimeKind.Utc); // Start of tomorrow = end of today
+            var stockCutoff = currentMonthEnd < today ? currentMonthEnd : today;
+
+            // If target month is in the future (no data yet), stock should be 0
+            int totalAyamStock = 0;
+            if (stockCutoff > currentMonthStart)
+            {
+                var totalAyamMasuk = await _context.Ayams
+                    .Where(a => a.TanggalMasuk < stockCutoff)
+                    .SumAsync(a => a.JumlahMasuk);
+
+                var totalMortalitas = await _context.Mortalitas
+                    .Where(m => m.TanggalKematian < stockCutoff)
+                    .SumAsync(m => m.JumlahKematian);
+
+                var totalPanen = await _context.Panens
+                    .Where(p => p.TanggalPanen < stockCutoff)
+                    .SumAsync(p => p.JumlahEkorPanen);
+
+                totalAyamStock = Math.Max(0, totalAyamMasuk - totalMortalitas - totalPanen);
+            }
 
             // Calculate average productivity (simplified as average weight gain)
             var avgProductivity = await _context.Panens
                 .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .AverageAsync(p => (double?)p.BeratRataRata) ?? 0;
+
+            // Calculate FCR for the target month
+            var fcr = await CalculateFeedConversionRatioAsync(targetYear, targetMonth);
 
             return new BusinessKpiDto
             {
@@ -647,6 +673,7 @@ namespace SIMTernakAyam.Services
                 ReturnOnInvestment = Math.Round(roi, 1),
                 TotalAyamStock = totalAyamStock,
                 AverageProductivity = Math.Round(avgProductivity * 100, 1), // Convert to percentage
+                FeedConversionRatio = fcr,
                 CustomerSatisfaction = 4.2, // This would need a separate customer feedback system
                 MarketShare = 15 // This would need market data
             };
@@ -657,13 +684,14 @@ namespace SIMTernakAyam.Services
             var currentMonthStart = DateTime.SpecifyKind(new DateTime(targetYear, targetMonth, 1), DateTimeKind.Utc);
             var currentMonthEnd = currentMonthStart.AddMonths(1);
 
+            // Revenue dari panen di bulan target
             var revenue = await _context.Panens
                 .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
-            var operatingExpenses = await _context.Biayas
-                .Where(b => b.Tanggal >= currentMonthStart && b.Tanggal < currentMonthEnd)
-                .SumAsync(b => b.Jumlah);
+            // Hitung biaya yang MATCH dengan ayam yang dipanen di bulan ini
+            // Biaya dihitung dari TanggalMasuk ayam sampai TanggalPanen
+            var operatingExpenses = await CalculateMatchedExpensesAsync(targetYear, targetMonth);
 
             var grossProfit = revenue;
             var netProfit = revenue - operatingExpenses;
@@ -672,7 +700,7 @@ namespace SIMTernakAyam.Services
                 .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata);
 
-            var costPerKg = totalKgPanen > 0 ? (decimal)operatingExpenses / (decimal)totalKgPanen : 0;
+            var costPerKg = totalKgPanen > 0 ? operatingExpenses / (decimal)totalKgPanen : 0;
             var pricePerKg = 25000; // Assumed market price
             var profitPerKg = pricePerKg - costPerKg;
             var profitMargin = revenue > 0 ? (double)netProfit / (double)revenue * 100 : 0;
@@ -706,24 +734,21 @@ namespace SIMTernakAyam.Services
                 .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
-            var currentMonthExpenses = await _context.Biayas
-                .Where(b => b.Tanggal >= currentMonthStart && b.Tanggal < currentMonthEnd)
-                .SumAsync(b => b.Jumlah);
+            // Hitung biaya yang MATCH dengan ayam yang dipanen
+            var currentMonthExpenses = await CalculateMatchedExpensesAsync(targetYear, targetMonth);
 
             // Previous month data
             var previousMonthRevenue = await _context.Panens
                 .Where(p => p.TanggalPanen >= previousMonthStart && p.TanggalPanen < previousMonthEnd)
                 .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
-            var previousMonthExpenses = await _context.Biayas
-                .Where(b => b.Tanggal >= previousMonthStart && b.Tanggal < previousMonthEnd)
-                .SumAsync(b => b.Jumlah);
+            var previousMonthExpenses = await CalculateMatchedExpensesAsync(previousMonthDate.Year, previousMonthDate.Month);
 
             // Calculate month-over-month changes
             var revenueChange = previousMonthRevenue > 0 ? (double)((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 : 0;
             var currentMonthProfit = currentMonthRevenue - currentMonthExpenses;
             var previousMonthProfit = previousMonthRevenue - previousMonthExpenses;
-            var profitChange = previousMonthProfit > 0 ? (double)((currentMonthProfit - previousMonthProfit) / previousMonthProfit) * 100 : 0;
+            var profitChange = previousMonthProfit != 0 ? (double)((currentMonthProfit - previousMonthProfit) / Math.Abs(previousMonthProfit)) * 100 : 0;
 
             // Year-to-date comparison
             var currentYearRevenue = await _context.Panens
@@ -736,8 +761,9 @@ namespace SIMTernakAyam.Services
 
             var revenueGrowth = previousYearRevenue > 0 ? (double)((currentYearRevenue - previousYearRevenue) / previousYearRevenue) * 100 : 0;
 
-            // Get current mortality rate
+            // Get current mortality rate and FCR
             var currentMortalityRate = await CalculateAverageMortalityRateAsync(targetYear, targetMonth);
+            var currentFcr = await CalculateFeedConversionRatioAsync(targetYear, targetMonth);
 
             return new ComparisonAnalysisDto
             {
@@ -763,6 +789,8 @@ namespace SIMTernakAyam.Services
                     YourMortalityRate = Math.Round(currentMortalityRate, 1),
                     IndustryAvgProductivity = 78.5, // Industry standard
                     YourProductivity = 85.2, // Would calculate from actual data
+                    IndustryAvgFcr = 1.7, // Industry standard (1.6-1.8)
+                    YourFcr = currentFcr,
                     PerformanceRating = currentMortalityRate < 5.5 ? "Above Average" : "Below Average"
                 }
             };
@@ -824,6 +852,7 @@ namespace SIMTernakAyam.Services
         {
             var revenueData = new List<MonthlyDataDto>();
             var profitData = new List<MonthlyDataDto>();
+            var fcrData = new List<MonthlyFcrDataDto>();
             var targetDate = new DateTime(targetYear, targetMonth, 1);
 
             // Get last 6 months data ending at target month
@@ -837,11 +866,13 @@ namespace SIMTernakAyam.Services
                     .Where(p => p.TanggalPanen >= monthStart && p.TanggalPanen < monthEnd)
                     .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata * 25000);
 
-                var monthExpense = await _context.Biayas
-                    .Where(b => b.Tanggal >= monthStart && b.Tanggal < monthEnd)
-                    .SumAsync(b => b.Jumlah);
+                // Hitung biaya yang MATCH dengan ayam yang dipanen di bulan ini
+                var monthExpense = await CalculateMatchedExpensesAsync(date.Year, date.Month);
 
                 var monthProfit = monthRevenue - monthExpense;
+
+                // Calculate FCR for this month
+                var monthFcr = await CalculateFeedConversionRatioAsync(date.Year, date.Month);
 
                 revenueData.Add(new MonthlyDataDto
                 {
@@ -856,12 +887,30 @@ namespace SIMTernakAyam.Services
                     Value = monthProfit,
                     Percentage = 100 // Would calculate based on baseline
                 });
+
+                // FCR status: Excellent (<1.6), Good (1.6-1.8), Fair (1.8-2.0), Poor (>2.0)
+                var fcrStatus = monthFcr switch
+                {
+                    0 => "No Data",
+                    < 1.6 => "Excellent",
+                    <= 1.8 => "Good",
+                    <= 2.0 => "Fair",
+                    _ => "Poor"
+                };
+
+                fcrData.Add(new MonthlyFcrDataDto
+                {
+                    Month = date.ToString("MMM yyyy"),
+                    FcrValue = monthFcr,
+                    Status = fcrStatus
+                });
             }
 
             return new MonthlyTrendsDto
             {
                 RevenueData = revenueData,
-                ProfitData = profitData
+                ProfitData = profitData,
+                FcrData = fcrData
             };
         }
 
@@ -903,23 +952,37 @@ namespace SIMTernakAyam.Services
             return totalAyams > 0 ? (double)totalMortality / totalAyams * 100 : 0;
         }
 
+        private async Task<double> CalculateFeedConversionRatioAsync(int targetYear, int targetMonth)
+        {
+            var monthStart = DateTime.SpecifyKind(new DateTime(targetYear, targetMonth, 1), DateTimeKind.Utc);
+            var monthEnd = monthStart.AddMonths(1);
+
+            // Calculate total feed consumed this month (in kg)
+            var totalFeedConsumed = await _context.Operasionals
+                .Where(o => o.Tanggal >= monthStart && o.Tanggal < monthEnd && o.PakanId != null)
+                .SumAsync(o => o.Jumlah);
+
+            // Calculate total weight gained (in kg) = jumlah ekor * berat rata-rata
+            var totalWeightGained = await _context.Panens
+                .Where(p => p.TanggalPanen >= monthStart && p.TanggalPanen < monthEnd)
+                .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata);
+
+            // FCR = Total Pakan (kg) / Total Berat Ayam (kg)
+            // Lower is better (ideal: 1.5-1.8)
+            if (totalWeightGained > 0)
+            {
+                return Math.Round((double)totalFeedConsumed / (double)totalWeightGained, 2);
+            }
+
+            // Return 0 if no data (not default 1.8, karena itu menyesatkan)
+            return 0;
+        }
+
+        // Overload for backward compatibility (uses current month)
         private async Task<double> CalculateFeedConversionRatioAsync()
         {
             var now = DateTime.UtcNow;
-            var currentMonth = now.Month;
-            var currentYear = now.Year;
-
-            // Calculate total feed consumed this month
-            var totalFeedConsumed = await _context.Operasionals
-                .Where(o => o.Tanggal.Month == currentMonth && o.Tanggal.Year == currentYear && o.PakanId != null)
-                .SumAsync(o => o.Jumlah);
-
-            // Calculate total weight gained (simplified calculation)
-            var totalWeightGained = await _context.Panens
-                .Where(p => p.TanggalPanen.Month == currentMonth && p.TanggalPanen.Year == currentYear)
-                .SumAsync(p => p.JumlahEkorPanen * p.BeratRataRata);
-
-            return totalWeightGained > 0 ? (double)totalFeedConsumed / (double)totalWeightGained : 1.8; // Default good FCR
+            return await CalculateFeedConversionRatioAsync(now.Year, now.Month);
         }
 
         private async Task<double> GetKandangUtilizationAsync()
@@ -936,6 +999,76 @@ namespace SIMTernakAyam.Services
             var lowStockVaksin = await _context.Vaksins.CountAsync(v => v.Stok <= 10);
 
             return lowStockPakan + lowStockVaksin;
+        }
+
+        /// <summary>
+        /// Menghitung biaya yang MATCH dengan ayam yang dipanen di bulan target.
+        /// Biaya dihitung dari TanggalMasuk ayam sampai TanggalPanen.
+        /// Ini memastikan profit lebih akurat karena biaya di-match dengan revenue batch yang sama.
+        /// </summary>
+        private async Task<decimal> CalculateMatchedExpensesAsync(int targetYear, int targetMonth)
+        {
+            var currentMonthStart = DateTime.SpecifyKind(new DateTime(targetYear, targetMonth, 1), DateTimeKind.Utc);
+            var currentMonthEnd = currentMonthStart.AddMonths(1);
+
+            // Ambil semua panen di bulan target beserta data Ayam-nya
+            var panensWithAyam = await _context.Panens
+                .Include(p => p.Ayam)
+                .Where(p => p.TanggalPanen >= currentMonthStart && p.TanggalPanen < currentMonthEnd)
+                .ToListAsync();
+
+            if (!panensWithAyam.Any())
+            {
+                return 0;
+            }
+
+            decimal totalMatchedExpenses = 0;
+
+            // Untuk setiap panen, hitung biaya yang terjadi selama periode perawatan ayam
+            foreach (var panen in panensWithAyam)
+            {
+                if (panen.Ayam == null) continue;
+
+                var ayamMasuk = DateTime.SpecifyKind(panen.Ayam.TanggalMasuk.Date, DateTimeKind.Utc);
+                var ayamPanen = DateTime.SpecifyKind(panen.TanggalPanen.Date.AddDays(1), DateTimeKind.Utc); // Include panen day
+                var kandangId = panen.Ayam.KandangId;
+
+                // Hitung biaya yang terkait dengan kandang ini selama periode perawatan
+                // Biaya dengan KandangId yang sama
+                var kandangExpenses = await _context.Biayas
+                    .Where(b => b.KandangId == kandangId &&
+                               b.Tanggal >= ayamMasuk &&
+                               b.Tanggal < ayamPanen)
+                    .SumAsync(b => b.Jumlah);
+
+                // Biaya dari Operasional (pakan, vaksin) untuk kandang ini
+                var operasionalExpenses = await _context.Biayas
+                    .Where(b => b.OperasionalId != null &&
+                               b.Operasional != null &&
+                               b.Operasional.KandangId == kandangId &&
+                               b.Tanggal >= ayamMasuk &&
+                               b.Tanggal < ayamPanen)
+                    .SumAsync(b => b.Jumlah);
+
+                // Biaya shared (tanpa KandangId dan tanpa OperasionalId) - di-prorate berdasarkan jumlah kandang aktif
+                var activeKandangCount = await _context.Kandangs.CountAsync();
+                if (activeKandangCount > 0)
+                {
+                    var sharedExpenses = await _context.Biayas
+                        .Where(b => b.KandangId == null &&
+                                   b.OperasionalId == null &&
+                                   b.Tanggal >= ayamMasuk &&
+                                   b.Tanggal < ayamPanen)
+                        .SumAsync(b => b.Jumlah);
+
+                    // Alokasikan shared cost per kandang
+                    totalMatchedExpenses += sharedExpenses / activeKandangCount;
+                }
+
+                totalMatchedExpenses += kandangExpenses + operasionalExpenses;
+            }
+
+            return totalMatchedExpenses;
         }
 
         #endregion
