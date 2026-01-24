@@ -28,6 +28,7 @@ namespace SIMTernakAyam.Data
         public DbSet<JurnalHarian> JurnalHarians { get; set; }
         public DbSet<HargaPasar> HargaPasar { get; set; }
         public DbSet<LogPeriodeKandang> LogPeriodeKandangs { get; set; }
+        public DbSet<RelokasiAyam> RelokasiAyams { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -159,7 +160,7 @@ namespace SIMTernakAyam.Data
 
             // Konfigurasi untuk HargaPasar
             modelBuilder.Entity<HargaPasar>()
-                .Property(h => h.HargaPerKg)
+                .Property(h => h.HargaPerEkor)
                 .HasPrecision(18, 2)
                 .IsRequired();
 
@@ -292,6 +293,49 @@ namespace SIMTernakAyam.Data
             modelBuilder.Entity<LogPeriodeKandang>()
                 .Property(l => l.AlasanAdaSisa)
                 .HasMaxLength(500);
+
+            // ========== RELOKASI AYAM (Kandang Isolasi Feature) ==========
+
+            // Relasi RelokasiAyam -> Kandang Asal (Many-to-One)
+            modelBuilder.Entity<RelokasiAyam>()
+                .HasOne(r => r.KandangAsal)
+                .WithMany()
+                .HasForeignKey(r => r.KandangAsalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relasi RelokasiAyam -> Kandang Tujuan (Many-to-One)
+            modelBuilder.Entity<RelokasiAyam>()
+                .HasOne(r => r.KandangTujuan)
+                .WithMany()
+                .HasForeignKey(r => r.KandangTujuanId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relasi RelokasiAyam -> Ayam Asal (Many-to-One)
+            modelBuilder.Entity<RelokasiAyam>()
+                .HasOne(r => r.AyamAsal)
+                .WithMany()
+                .HasForeignKey(r => r.AyamAsalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Relasi RelokasiAyam -> Ayam Tujuan (Many-to-One, optional)
+            modelBuilder.Entity<RelokasiAyam>()
+                .HasOne(r => r.AyamTujuan)
+                .WithMany()
+                .HasForeignKey(r => r.AyamTujuanId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
+            // Relasi RelokasiAyam -> Petugas (Many-to-One)
+            modelBuilder.Entity<RelokasiAyam>()
+                .HasOne(r => r.Petugas)
+                .WithMany()
+                .HasForeignKey(r => r.PetugasId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Konfigurasi properti untuk RelokasiAyam
+            modelBuilder.Entity<RelokasiAyam>()
+                .Property(r => r.Catatan)
+                .HasMaxLength(1000);
 
             // ⭐ GLOBAL QUERY FILTER: Automatic soft delete filtering for all entities
             // This applies to all entities that inherit from BaseModel

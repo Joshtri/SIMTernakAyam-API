@@ -64,10 +64,9 @@ namespace SIMTernakAyam.Services.Interfaces
         /// Menghitung estimasi keuntungan berdasarkan harga pasar aktif
         /// </summary>
         /// <param name="totalAyam">Total jumlah ayam</param>
-        /// <param name="beratRataRata">Berat rata-rata per ekor (kg)</param>
         /// <param name="tanggalReferensi">Tanggal referensi untuk harga pasar</param>
         /// <returns>Estimasi keuntungan</returns>
-        Task<(bool Success, string Message, EstimasiKeuntunganDto? Data)> HitungKeuntunganAsync(int totalAyam, decimal beratRataRata, DateTime tanggalReferensi);
+        Task<(bool Success, string Message, EstimasiKeuntunganDto? Data)> HitungKeuntunganAsync(int totalAyam, DateTime tanggalReferensi);
 
         /// <summary>
         /// Menghitung keuntungan berdasarkan data panen yang sudah ada

@@ -232,6 +232,10 @@ namespace SIMTernakAyam.Controllers
                     PetugasId = kandang.petugasId,
                     PetugasNama = kandang.User?.FullName ?? kandang.User?.Username,
                     
+                    // Tipe Kandang
+                    TipeKandang = kandang.TipeKandang,
+                    TipeKandangNama = kandang.TipeKandang.ToString(),
+                    
                     // Informasi Stok
                     JumlahAyamTerisi = jumlahAyamHidup,
                     KapasitasTersedia = kapasitasTersedia,
@@ -285,7 +289,8 @@ namespace SIMTernakAyam.Controllers
                     NamaKandang = dto.NamaKandang,
                     Kapasitas = dto.Kapasitas,
                     Lokasi = dto.Lokasi,
-                    petugasId = dto.PetugasId
+                    petugasId = dto.PetugasId,
+                    TipeKandang = dto.TipeKandang
                 };
 
                 var result = await _kandangService.CreateAsync(kandang);
@@ -330,7 +335,8 @@ namespace SIMTernakAyam.Controllers
                     NamaKandang = dto.NamaKandang,
                     Kapasitas = dto.Kapasitas,
                     Lokasi = dto.Lokasi,
-                    petugasId = dto.PetugasId
+                    petugasId = dto.PetugasId,
+                    TipeKandang = dto.TipeKandang
                 };
 
                 var result = await _kandangService.UpdateAsync(kandang);

@@ -1,5 +1,6 @@
 using SIMTernakAyam.Models;
 using SIMTernakAyam.Repository.Interfaces;
+using SIMTernakAyam.Repositories.Interfaces;
 using SIMTernakAyam.Services.Interfaces;
 using SIMTernakAyam.DTOs.Panen;
 
@@ -7,6 +8,7 @@ namespace SIMTernakAyam.Services
 {
     public class PanenService : BaseService<Panen>, IPanenService
     {
+
         private readonly IPanenRepository _panenRepository;
         private readonly IAyamRepository _ayamRepository;
         private readonly IHargaPasarService _hargaPasarService;
@@ -14,6 +16,9 @@ namespace SIMTernakAyam.Services
         private readonly IOperasionalRepository _operasionalRepository;
         private readonly IFifoService _fifoService;
         private readonly IAyamService _ayamService;
+        private readonly INotificationService _notificationService;
+        private readonly IKandangRepository _kandangRepository;
+        private readonly IUserRepository _userRepository;
 
         public PanenService(
             IPanenRepository repository,
@@ -22,7 +27,10 @@ namespace SIMTernakAyam.Services
             IBiayaRepository biayaRepository,
             IOperasionalRepository operasionalRepository,
             IFifoService fifoService,
-            IAyamService ayamService) : base(repository)
+            IAyamService ayamService,
+            INotificationService notificationService,
+            IKandangRepository kandangRepository,
+            IUserRepository userRepository) : base(repository)
         {
             _panenRepository = repository ?? throw new ArgumentNullException(nameof(repository));
             _ayamRepository = ayamRepository ?? throw new ArgumentNullException(nameof(ayamRepository));
@@ -31,6 +39,9 @@ namespace SIMTernakAyam.Services
             _operasionalRepository = operasionalRepository ?? throw new ArgumentNullException(nameof(operasionalRepository));
             _fifoService = fifoService ?? throw new ArgumentNullException(nameof(fifoService));
             _ayamService = ayamService ?? throw new ArgumentNullException(nameof(ayamService));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+            _kandangRepository = kandangRepository ?? throw new ArgumentNullException(nameof(kandangRepository));
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         }
 
         public async Task<IEnumerable<Panen>> GetPanenByAyamAsync(Guid ayamId)
@@ -269,6 +280,13 @@ namespace SIMTernakAyam.Services
 
                 var totalCreated = panenList.Count;
                 var message = $"Berhasil membuat {totalCreated} record panen dengan Auto FIFO (ayam terbaru). Total: {jumlahEkorPanen} ekor.";
+                
+                // Send notification for Auto FIFO panen
+                if (panenList.Any())
+                {
+                    await SendAutoFifoPanenNotificationAsync(kandangId, jumlahEkorPanen, beratRataRata);
+                }
+                
                 return (true, message, panenList);
             }
             catch (Exception ex)
@@ -417,6 +435,14 @@ namespace SIMTernakAyam.Services
                 var message = $"Berhasil membuat {panenList.Count} record panen dengan Manual Split. " +
                               $"Ayam lama: {jumlahDariAyamLama} ekor, Ayam baru: {jumlahDariAyamBaru} ekor. " +
                               $"Total: {totalJumlah} ekor.";
+                
+                // Send notification for Manual Split panen
+                if (panenList.Any())
+                {
+                    var totalBerat = totalJumlah * beratRataRata;
+                    await SendManualSplitPanenNotificationAsync(kandangId, totalJumlah, totalBerat);
+                }
+                
                 return (true, message, panenList);
             }
             catch (Exception ex)
@@ -567,70 +593,95 @@ namespace SIMTernakAyam.Services
             await Task.CompletedTask;
         }
 
-        protected override async Task<ValidationResult> ValidateOnUpdateAsync(Panen entity, Panen existingEntity)
+        protected override async Task AfterCreateAsync(Panen entity)
         {
-            // Basic validation
-            if (entity.JumlahEkorPanen <= 0)
-            {
-                return new ValidationResult { IsValid = false, ErrorMessage = "Jumlah ekor panen harus lebih dari 0." };
-            }
+            // Send notification after successful panen
+            await SendPanenNotificationAsync(entity);
+        }
 
-            // Sync with UpdatePanenDto validation: [Range(0.01, 100.00)]
-            if (entity.BeratRataRata < 0.01m || entity.BeratRataRata > 100.00m)
-            {
-                return new ValidationResult { IsValid = false, ErrorMessage = "Berat rata-rata harus antara 0.01 sampai 100.00 kg." };
-            }
-
-            if (entity.TanggalPanen > DateTime.UtcNow)
-            {
-                return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal panen tidak boleh di masa depan." };
-            }
-
-            // Check if ayam exists with proper null checking
+        private async Task SendPanenNotificationAsync(Panen panen)
+        {
             try
             {
-                if (_ayamRepository == null)
-                {
-                    return new ValidationResult { IsValid = false, ErrorMessage = "Ayam repository is not available." };
-                }
+                // Get ayam and kandang info
+                var ayam = await _ayamRepository.GetByIdAsync(panen.AyamId);
+                if (ayam == null) return;
 
-                var ayam = await _ayamRepository.GetByIdAsync(entity.AyamId);
-                if (ayam == null)
-                {
-                    return new ValidationResult { IsValid = false, ErrorMessage = "Data ayam tidak ditemukan." };
-                }
+                var kandang = await _kandangRepository.GetByIdAsync(ayam.KandangId);
+                if (kandang == null) return;
 
-                // ?? TEMPORARY COMMENT - FOR TESTING ONLY - UNCOMMENT LATER
-                // Validate that harvest date is not before entry date
-                // if (entity.TanggalPanen < ayam.TanggalMasuk)
-                // {
-                //     return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal panen tidak boleh sebelum tanggal masuk ayam." };
-                // }
+                // Get petugas info
+                var petugas = await _userRepository.GetByIdAsync(kandang.petugasId);
+                if (petugas == null) return;
 
-                // NEW VALIDATION: Check stock for UPDATE (exclude current panen from calculation)
-                var totalAyamMasuk = ayam.JumlahMasuk;
-                var totalSudahDipanen = await _panenRepository.GetTotalEkorPanenByAyamExcludingAsync(entity.AyamId, entity.Id);
-                var sisaAyam = totalAyamMasuk - totalSudahDipanen;
+                var totalBerat = panen.JumlahEkorPanen * panen.BeratRataRata;
 
-                if (entity.JumlahEkorPanen > sisaAyam)
-                {
-                    return new ValidationResult { 
-                        IsValid = false, 
-                        ErrorMessage = $"Jumlah panen ({entity.JumlahEkorPanen} ekor) melebihi sisa ayam yang tersedia ({sisaAyam} ekor). Total ayam masuk: {totalAyamMasuk}, sudah dipanen (kecuali yang sedang diupdate): {totalSudahDipanen}." 
-                    };
-                }
+                await _notificationService.NotifyPanenAsync(
+                    petugas.Id,
+                    petugas.FullName ?? petugas.Username,
+                    kandang.NamaKandang,
+                    panen.JumlahEkorPanen,
+                    totalBerat,
+                    kandang.Id
+                );
             }
             catch (Exception ex)
             {
-                // More detailed error for debugging
-                var innerMsg = ex.InnerException?.Message ?? "";
-                return new ValidationResult { 
-                    IsValid = false, 
-                    ErrorMessage = $"Error validating ayam data: {ex.Message} {innerMsg}".Trim()
-                };
+                // Log error but don't throw - notification is non-critical
+                Console.WriteLine($"Error sending panen notification: {ex.Message}");
             }
+        }
 
-            return new ValidationResult { IsValid = true };
+        private async Task SendAutoFifoPanenNotificationAsync(Guid kandangId, int jumlahEkor, decimal beratRataRata)
+        {
+            try
+            {
+                var kandang = await _kandangRepository.GetByIdAsync(kandangId);
+                if (kandang == null) return;
+
+                var petugas = await _userRepository.GetByIdAsync(kandang.petugasId);
+                if (petugas == null) return;
+
+                var totalBerat = jumlahEkor * beratRataRata;
+
+                await _notificationService.NotifyPanenAsync(
+                    petugas.Id,
+                    petugas.FullName ?? petugas.Username,
+                    kandang.NamaKandang,
+                    jumlahEkor,
+                    totalBerat,
+                    kandang.Id
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending auto FIFO panen notification: {ex.Message}");
+            }
+        }
+
+        private async Task SendManualSplitPanenNotificationAsync(Guid kandangId, int jumlahEkor, decimal totalBerat)
+        {
+            try
+            {
+                var kandang = await _kandangRepository.GetByIdAsync(kandangId);
+                if (kandang == null) return;
+
+                var petugas = await _userRepository.GetByIdAsync(kandang.petugasId);
+                if (petugas == null) return;
+
+                await _notificationService.NotifyPanenAsync(
+                    petugas.Id,
+                    petugas.FullName ?? petugas.Username,
+                    kandang.NamaKandang,
+                    jumlahEkor,
+                    totalBerat,
+                    kandang.Id
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending manual split panen notification: {ex.Message}");
+            }
         }
     }
 }

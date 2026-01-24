@@ -11,9 +11,10 @@ namespace SIMTernakAyam.DTOs.Ayam
         public DateTime TanggalMasuk { get; set; }
         public int JumlahMasuk { get; set; }
         
-        // ✅ NEW: Stock Information
+        // Stock Information
         public int JumlahSudahDipanen { get; set; }
         public int JumlahMortalitas { get; set; }
+        public int JumlahDirelokasi { get; set; } // Jumlah yang dipindahkan ke kandang lain
         public int SisaAyamHidup { get; set; }
         public decimal PersentaseSurvival { get; set; } // Persentase ayam yang masih hidup
         public decimal PersentaseDipanen { get; set; } // Persentase yang sudah dipanen
@@ -26,9 +27,9 @@ namespace SIMTernakAyam.DTOs.Ayam
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
-        public static AyamResponseDto FromEntity(Models.Ayam ayam, int jumlahDipanen = 0, int jumlahMortalitas = 0)
+        public static AyamResponseDto FromEntity(Models.Ayam ayam, int jumlahDipanen = 0, int jumlahMortalitas = 0, int jumlahDirelokasi = 0)
         {
-            var sisaHidup = Math.Max(0, ayam.JumlahMasuk - jumlahDipanen - jumlahMortalitas);
+            var sisaHidup = Math.Max(0, ayam.JumlahMasuk - jumlahDipanen - jumlahMortalitas - jumlahDirelokasi);
             var persentaseSurvival = ayam.JumlahMasuk > 0 ? Math.Round((decimal)sisaHidup / ayam.JumlahMasuk * 100, 2) : 0;
             var persentaseDipanen = ayam.JumlahMasuk > 0 ? Math.Round((decimal)jumlahDipanen / ayam.JumlahMasuk * 100, 2) : 0;
             var persentaseMortalitas = ayam.JumlahMasuk > 0 ? Math.Round((decimal)jumlahMortalitas / ayam.JumlahMasuk * 100, 2) : 0;
@@ -41,19 +42,20 @@ namespace SIMTernakAyam.DTOs.Ayam
                 PetugasKandangNama = ayam.Kandang?.User?.FullName ?? ayam.Kandang?.User?.Username,
                 TanggalMasuk = ayam.TanggalMasuk,
                 JumlahMasuk = ayam.JumlahMasuk,
-                
+
                 // Stock Information
                 JumlahSudahDipanen = jumlahDipanen,
                 JumlahMortalitas = jumlahMortalitas,
+                JumlahDirelokasi = jumlahDirelokasi,
                 SisaAyamHidup = sisaHidup,
                 PersentaseSurvival = persentaseSurvival,
                 PersentaseDipanen = persentaseDipanen,
                 PersentaseMortalitas = persentaseMortalitas,
-                
+
                 // Status Information
                 BisaDipanen = sisaHidup > 0,
                 PerluPerhatianKesehatan = persentaseMortalitas > 10, // Alert jika mortalitas > 10%
-                
+
                 CreatedAt = ayam.CreatedAt,
                 UpdateAt = ayam.UpdateAt
             };
@@ -64,16 +66,18 @@ namespace SIMTernakAyam.DTOs.Ayam
             return ayams.Select(ayam => FromEntity(ayam)).ToList();
         }
 
-        // ✅ NEW: Method with stock data
+        // Method with stock data (including relokasi)
         public static List<AyamResponseDto> FromEntitiesWithStockData(
-            IEnumerable<Models.Ayam> ayams, 
-            Dictionary<Guid, int> panenData, 
-            Dictionary<Guid, int> mortalitasData)
+            IEnumerable<Models.Ayam> ayams,
+            Dictionary<Guid, int> panenData,
+            Dictionary<Guid, int> mortalitasData,
+            Dictionary<Guid, int>? relokasiData = null)
         {
             return ayams.Select(ayam => FromEntity(
-                ayam, 
+                ayam,
                 panenData.GetValueOrDefault(ayam.Id, 0),
-                mortalitasData.GetValueOrDefault(ayam.Id, 0)
+                mortalitasData.GetValueOrDefault(ayam.Id, 0),
+                relokasiData?.GetValueOrDefault(ayam.Id, 0) ?? 0
             )).ToList();
         }
     }

@@ -8,6 +8,7 @@ namespace SIMTernakAyam.DTOs.HargaPasar
     public class HargaPasarResponseDto
     {
         public Guid Id { get; set; }
+        public decimal HargaPerEkor { get; set; }
         public decimal HargaPerKg { get; set; }
         public DateTime TanggalMulai { get; set; }
         public DateTime? TanggalBerakhir { get; set; }
@@ -28,9 +29,14 @@ namespace SIMTernakAyam.DTOs.HargaPasar
         public int? DurasiBerlaku => TanggalBerakhir?.Subtract(TanggalMulai).Days;
         
         /// <summary>
-        /// Format harga dalam rupiah
+        /// Format harga per ekor dalam rupiah
         /// </summary>
-        public string HargaFormatted => $"Rp {HargaPerKg:N0}";
+        public string HargaPerEkorFormatted => $"Rp {HargaPerEkor:N0}";
+        
+        /// <summary>
+        /// Format harga per kg dalam rupiah
+        /// </summary>
+        public string HargaPerKgFormatted => $"Rp {HargaPerKg:N0}";
 
         /// <summary>
         /// Konversi dari entity model ke response DTO
@@ -42,6 +48,7 @@ namespace SIMTernakAyam.DTOs.HargaPasar
             return new HargaPasarResponseDto
             {
                 Id = hargaPasar.Id,
+                HargaPerEkor = hargaPasar.HargaPerEkor,
                 HargaPerKg = hargaPasar.HargaPerKg,
                 TanggalMulai = hargaPasar.TanggalMulai,
                 TanggalBerakhir = hargaPasar.TanggalBerakhir,

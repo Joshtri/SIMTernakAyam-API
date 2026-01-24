@@ -1,0 +1,363 @@
+@baseUrl = https://localhost:7231
+@token = YOUR_JWT_TOKEN_HERE
+@kandangId = YOUR_KANDANG_ID_HERE
+@ayamId = YOUR_AYAM_ID_HERE
+@mortalitasId = YOUR_MORTALITAS_ID_HERE
+
+### ============================================
+### TEST: Waktu Kematian pada Mortalitas
+### ============================================
+
+### 1. Create Mortalitas dengan Waktu Kematian (Auto FIFO Mode)
+# @name createMortalitasAutoFifo
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "14:30",
+  "jumlahKematian": 5,
+  "penyebabKematian": "Penyakit respiratory - Test dengan waktu kematian",
+  "fotoMortalitasBase64": null,
+  "fotoMortalitasFileName": null
+}
+
+### 2. Create Mortalitas dengan Waktu Kematian Pagi
+# @name createMortalitasPagi
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "08:15",
+  "jumlahKematian": 3,
+  "penyebabKematian": "Ditemukan mati pagi hari",
+  "fotoMortalitasBase64": null
+}
+
+### 3. Create Mortalitas dengan Waktu Kematian Siang
+# @name createMortalitasSiang
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "12:45",
+  "jumlahKematian": 2,
+  "penyebabKematian": "Stress heat siang hari",
+  "fotoMortalitasBase64": null
+}
+
+### 4. Create Mortalitas dengan Waktu Kematian Malam
+# @name createMortalitasMalam
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "22:30",
+  "jumlahKematian": 4,
+  "penyebabKematian": "Ditemukan mati saat pengecekan malam",
+  "fotoMortalitasBase64": null
+}
+
+### 5. Create Mortalitas Manual Split dengan Waktu Kematian
+# @name createMortalitasManualSplit
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "manual-split",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "09:15",
+  "jumlahKematian": 10,
+  "jumlahDariAyamLama": 6,
+  "jumlahDariAyamBaru": 4,
+  "penyebabKematian": "Mixed batch mortality - pagi hari",
+  "fotoMortalitasBase64": null
+}
+
+### 6. Create Mortalitas Auto FIFO (Endpoint Khusus)
+# @name createAutoFifoEndpoint
+POST {{baseUrl}}/api/mortalitas/auto-fifo
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "16:20",
+  "jumlahKematian": 7,
+  "penyebabKematian": "Newcastle Disease - sore hari",
+  "fotoMortalitasBase64": null
+}
+
+### ============================================
+### VALIDATION TESTS
+### ============================================
+
+### 7. Test Validation: Waktu Kematian WAJIB DIISI
+# Expected: 400 Bad Request
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "jumlahKematian": 5,
+  "penyebabKematian": "Test tanpa waktu kematian"
+}
+
+### 8. Test Validation: Format Waktu Invalid
+# Expected: 400 Bad Request
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "25:70",
+  "jumlahKematian": 5,
+  "penyebabKematian": "Test format waktu invalid"
+}
+
+### ============================================
+### GET / READ TESTS
+### ============================================
+
+### 9. Get Mortalitas by ID (Verify Waktu Kematian)
+GET {{baseUrl}}/api/mortalitas/{{mortalitasId}}
+Authorization: Bearer {{token}}
+
+### 10. Get All Mortalitas (Check Waktu Kematian in List)
+GET {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+
+### 11. Get Mortalitas by Kandang (Filter by Kandang)
+GET {{baseUrl}}/api/mortalitas/kandang/{{kandangId}}
+Authorization: Bearer {{token}}
+
+### 12. Get Mortalitas with Period Filter (Current Month)
+GET {{baseUrl}}/api/mortalitas?period=2026-01
+Authorization: Bearer {{token}}
+
+### ============================================
+### UPDATE TESTS
+### ============================================
+
+### 13. Update Mortalitas - Update Waktu Kematian
+PUT {{baseUrl}}/api/mortalitas/{{mortalitasId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": "{{mortalitasId}}",
+  "ayamId": "{{ayamId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "15:45",
+  "jumlahKematian": 7,
+  "penyebabKematian": "Updated dengan waktu kematian baru",
+  "fotoMortalitasBase64": null
+}
+
+### 14. Update Mortalitas - Ubah ke Waktu Pagi
+PUT {{baseUrl}}/api/mortalitas/{{mortalitasId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": "{{mortalitasId}}",
+  "ayamId": "{{ayamId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "06:00",
+  "jumlahKematian": 5,
+  "penyebabKematian": "Koreksi: kematian terjadi dini hari",
+  "fotoMortalitasBase64": null
+}
+
+### 15. Update Mortalitas - Ubah ke Waktu Tengah Malam
+PUT {{baseUrl}}/api/mortalitas/{{mortalitasId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "id": "{{mortalitasId}}",
+  "ayamId": "{{ayamId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "00:30",
+  "jumlahKematian": 3,
+  "penyebabKematian": "Koreksi: kematian tengah malam",
+  "fotoMortalitasBase64": null
+}
+
+### ============================================
+### EDGE CASES
+### ============================================
+
+### 16. Test Waktu 00:00 (Tengah Malam)
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "00:00",
+  "jumlahKematian": 2,
+  "penyebabKematian": "Tepat tengah malam",
+  "fotoMortalitasBase64": null
+}
+
+### 17. Test Waktu 23:59 (Sebelum Tengah Malam)
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "23:59",
+  "jumlahKematian": 1,
+  "penyebabKematian": "1 menit sebelum tengah malam",
+  "fotoMortalitasBase64": null
+}
+
+### 18. Test Waktu 12:00 (Siang Tepat)
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-23T08:00:00Z",
+  "waktuKematian": "12:00",
+  "jumlahKematian": 3,
+  "penyebabKematian": "Tepat tengah hari",
+  "fotoMortalitasBase64": null
+}
+
+### ============================================
+### PATTERN ANALYSIS TESTS
+### ============================================
+
+### 19. Create Multiple Mortalitas - Pola Pagi (06:00 - 09:00)
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-24T08:00:00Z",
+  "waktuKematian": "07:30",
+  "jumlahKematian": 4,
+  "penyebabKematian": "Pola pagi - respiratory",
+  "fotoMortalitasBase64": null
+}
+
+### 20. Create Multiple Mortalitas - Pola Siang (12:00 - 15:00)
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-24T08:00:00Z",
+  "waktuKematian": "13:45",
+  "jumlahKematian": 6,
+  "penyebabKematian": "Pola siang - heat stress",
+  "fotoMortalitasBase64": null
+}
+
+### 21. Create Multiple Mortalitas - Pola Malam (20:00 - 23:00)
+POST {{baseUrl}}/api/mortalitas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mode": "auto-fifo",
+  "kandangId": "{{kandangId}}",
+  "tanggalKematian": "2026-01-24T08:00:00Z",
+  "waktuKematian": "21:15",
+  "jumlahKematian": 2,
+  "penyebabKematian": "Pola malam - sudden death syndrome",
+  "fotoMortalitasBase64": null
+}
+
+### ============================================
+### DELETE TEST
+### ============================================
+
+### 22. Delete Mortalitas (Cleanup Test Data)
+DELETE {{baseUrl}}/api/mortalitas/{{mortalitasId}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### NOTES
+### ============================================
+
+# Format Waktu yang Valid:
+# - 00:00 sampai 23:59
+# - Format: HH:mm
+# - Leading zero wajib (08:30, bukan 8:30)
+
+# Common Time Ranges:
+# - Dini hari: 00:00 - 05:59
+# - Pagi: 06:00 - 11:59
+# - Siang: 12:00 - 14:59
+# - Sore: 15:00 - 17:59
+# - Malam: 18:00 - 23:59
+
+# Response akan include:
+# - tanggalKematian (DateTime with timezone)
+# - waktuKematian (TimeOnly format HH:mm)
+# - Kombinasi keduanya untuk timestamp lengkap
+
+### ============================================
+### EXPECTED RESPONSE FORMAT
+### ============================================
+
+# Success Response:
+# {
+#   "success": true,
+#   "message": "Berhasil mencatat X ekor kematian...",
+#   "data": [
+#     {
+#       "id": "...",
+#       "tanggalKematian": "2026-01-23T08:00:00Z",
+#       "waktuKematian": "14:30",
+#       "jumlahKematian": 5,
+#       "penyebabKematian": "...",
+#       ...
+#     }
+#   ]
+# }
+
+# Validation Error Response:
+# {
+#   "success": false,
+#   "message": "Waktu kematian wajib diisi.",
+#   "statusCode": 400
+# }

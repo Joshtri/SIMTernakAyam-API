@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SIMTernakAyam.Enums;
 
 namespace SIMTernakAyam.DTOs.Kandang
 {
@@ -21,5 +22,10 @@ namespace SIMTernakAyam.DTOs.Kandang
 
         [Required(ErrorMessage = "Petugas ID wajib diisi.")]
         public Guid PetugasId { get; set; }
+
+        /// <summary>
+        /// Tipe kandang: Normal atau Isolasi
+        /// </summary>
+        public TipeKandangEnum TipeKandang { get; set; }
     }
 }

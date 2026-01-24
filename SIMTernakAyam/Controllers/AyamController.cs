@@ -18,15 +18,18 @@ namespace SIMTernakAyam.Controllers
         private readonly IAyamService _ayamService;
         private readonly IPanenRepository _panenRepository;
         private readonly IMortalitasRepository _mortalitasRepository;
+        private readonly IRelokasiRepository _relokasiRepository;
 
         public AyamController(
             IAyamService ayamService,
             IPanenRepository panenRepository,
-            IMortalitasRepository mortalitasRepository)
+            IMortalitasRepository mortalitasRepository,
+            IRelokasiRepository relokasiRepository)
         {
             _ayamService = ayamService;
             _panenRepository = panenRepository;
             _mortalitasRepository = mortalitasRepository;
+            _relokasiRepository = relokasiRepository;
         }
 
         [HttpGet]
@@ -97,13 +100,14 @@ namespace SIMTernakAyam.Controllers
                     ).ToList();
                 }
 
-                // ? Get stock data for all ayams in bulk
+                // Get stock data for all ayams in bulk
                 var ayamIds = ayamList.Select(a => a.Id).ToList();
                 var panenData = ayamIds.Any() ? await _panenRepository.GetTotalEkorPanenByAyamIdsAsync(ayamIds) : new Dictionary<Guid, int>();
                 var mortalitasData = ayamIds.Any() ? await _mortalitasRepository.GetTotalMortalitasByAyamIdsAsync(ayamIds) : new Dictionary<Guid, int>();
+                var relokasiData = ayamIds.Any() ? await _relokasiRepository.GetTotalRelokasiKeluarByAyamIdsAsync(ayamIds) : new Dictionary<Guid, int>();
 
-                // ? Map to DTO with stock information
-                var response = AyamResponseDto.FromEntitiesWithStockData(ayamList, panenData, mortalitasData);
+                // Map to DTO with stock information (including relokasi)
+                var response = AyamResponseDto.FromEntitiesWithStockData(ayamList, panenData, mortalitasData, relokasiData);
                 return Success(response, "Berhasil mengambil data ayam.");
             }
             catch (Exception ex)
@@ -125,11 +129,12 @@ namespace SIMTernakAyam.Controllers
                     return NotFound("Data ayam tidak ditemukan.");
                 }
 
-                // ? Get stock data for single ayam
+                // Get stock data for single ayam (including relokasi)
                 var jumlahDipanen = await _panenRepository.GetTotalEkorPanenByAyamAsync(id);
                 var jumlahMortalitas = await _mortalitasRepository.GetTotalMortalitasByAyamAsync(id);
+                var jumlahDirelokasi = await _relokasiRepository.GetTotalRelokasiKeluarByAyamAsync(id);
 
-                var response = AyamResponseDto.FromEntity(ayam, jumlahDipanen, jumlahMortalitas);
+                var response = AyamResponseDto.FromEntity(ayam, jumlahDipanen, jumlahMortalitas, jumlahDirelokasi);
                 return Success(response, "Berhasil mengambil data ayam.");
             }
             catch (Exception ex)
@@ -320,10 +325,11 @@ namespace SIMTernakAyam.Controllers
                     return NotFound("Tidak ada data ayam di kandang ini.");
                 }
 
-                // Get stock data
+                // Get stock data (including relokasi)
                 var ayamIds = ayamList.Select(a => a.Id).ToList();
                 var panenData = await _panenRepository.GetTotalEkorPanenByAyamIdsAsync(ayamIds);
                 var mortalitasData = await _mortalitasRepository.GetTotalMortalitasByAyamIdsAsync(ayamIds);
+                var relokasiData = await _relokasiRepository.GetTotalRelokasiKeluarByAyamIdsAsync(ayamIds);
 
                 // Filter only ayam with remaining stock (SisaAyamHidup > 0)
                 var ayamDenganSisa = new List<AyamResponseDto>();
@@ -332,7 +338,8 @@ namespace SIMTernakAyam.Controllers
                 {
                     var jumlahDipanen = panenData.GetValueOrDefault(ayam.Id, 0);
                     var jumlahMortalitas = mortalitasData.GetValueOrDefault(ayam.Id, 0);
-                    var dto = AyamResponseDto.FromEntity(ayam, jumlahDipanen, jumlahMortalitas);
+                    var jumlahDirelokasi = relokasiData.GetValueOrDefault(ayam.Id, 0);
+                    var dto = AyamResponseDto.FromEntity(ayam, jumlahDipanen, jumlahMortalitas, jumlahDirelokasi);
 
                     // Only include if there's remaining stock
                     if (dto.SisaAyamHidup > 0)

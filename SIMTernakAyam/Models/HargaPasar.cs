@@ -7,6 +7,11 @@ namespace SIMTernakAyam.Models
     public class HargaPasar : BaseModel
     {
         /// <summary>
+        /// Harga per ekor ayam hidup (Rp/ekor)
+        /// </summary>
+        public decimal HargaPerEkor { get; set; }
+        
+        /// <summary>
         /// Harga per kilogram ayam hidup (Rp/kg)
         /// </summary>
         public decimal HargaPerKg { get; set; }

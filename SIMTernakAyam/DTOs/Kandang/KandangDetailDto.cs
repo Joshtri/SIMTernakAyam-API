@@ -1,3 +1,5 @@
+using SIMTernakAyam.Enums;
+
 namespace SIMTernakAyam.DTOs.Kandang
 {
     /// <summary>
@@ -12,6 +14,10 @@ namespace SIMTernakAyam.DTOs.Kandang
         public string Lokasi { get; set; } = string.Empty;
         public Guid PetugasId { get; set; }
         public string? PetugasNama { get; set; }
+        
+        // Tipe Kandang
+        public TipeKandangEnum TipeKandang { get; set; }
+        public string TipeKandangNama { get; set; } = string.Empty;
         
         // Informasi Stok Ayam
         public int JumlahAyamTerisi { get; set; }

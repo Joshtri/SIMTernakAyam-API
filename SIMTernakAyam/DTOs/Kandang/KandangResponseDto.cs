@@ -1,3 +1,5 @@
+using SIMTernakAyam.Enums;
+
 namespace SIMTernakAyam.DTOs.Kandang
 {
     public class KandangResponseDto
@@ -8,14 +10,18 @@ namespace SIMTernakAyam.DTOs.Kandang
         public string Lokasi { get; set; } = string.Empty;
         public Guid PetugasId { get; set; }
         public string? PetugasNama { get; set; }
-        
-        // ? NEW: Informasi jumlah ayam di kandang
+
+        // Tipe Kandang (Normal/Isolasi)
+        public TipeKandangEnum TipeKandang { get; set; }
+        public string TipeKandangNama { get; set; } = string.Empty;
+
+        // Informasi jumlah ayam di kandang
         public int JumlahAyamTerisi { get; set; } // Total ayam hidup saat ini
         public int KapasitasTersedia { get; set; } // Kapasitas yang masih tersedia
         public decimal PersentaseTerisi { get; set; } // Persentase pengisian kandang
         public bool IsKandangPenuh { get; set; } // Apakah kandang sudah penuh
         public string StatusKapasitas { get; set; } = string.Empty; // "Kosong", "Tersedia", "Hampir Penuh", "Penuh"
-        
+
         public DateTime CreatedAt { get; set; }
         public DateTime UpdateAt { get; set; }
 
@@ -47,14 +53,18 @@ namespace SIMTernakAyam.DTOs.Kandang
                 Lokasi = kandang.Lokasi,
                 PetugasId = kandang.petugasId,
                 PetugasNama = kandang.User?.FullName ?? kandang.User?.Username,
-                
+
+                // Tipe Kandang
+                TipeKandang = kandang.TipeKandang,
+                TipeKandangNama = kandang.TipeKandang.ToString(),
+
                 // Informasi jumlah ayam
                 JumlahAyamTerisi = jumlahAyamHidup,
                 KapasitasTersedia = kapasitasTersedia,
                 PersentaseTerisi = persentaseTerisi,
                 IsKandangPenuh = isKandangPenuh,
                 StatusKapasitas = statusKapasitas,
-                
+
                 CreatedAt = kandang.CreatedAt,
                 UpdateAt = kandang.UpdateAt
             };

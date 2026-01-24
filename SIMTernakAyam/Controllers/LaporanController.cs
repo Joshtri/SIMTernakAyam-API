@@ -379,5 +379,64 @@ namespace SIMTernakAyam.Controllers
         }
 
         #endregion
+
+        #region Batch Reporting Endpoints
+
+        /// <summary>
+        /// Mendapatkan daftar batch/siklus yang tersedia untuk dropdown filter
+        /// </summary>
+        [HttpGet("batch/options")]
+        [ProducesResponseType(typeof(Common.ApiResponse<List<BatchOptionDto>>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 403)]
+        public async Task<IActionResult> GetBatchOptions()
+        {
+            try
+            {
+                if (!IsOperatorOrPemilik())
+                {
+                    return Forbidden("Akses ditolak. Fitur ini hanya untuk Operator dan Pemilik.");
+                }
+
+                var result = await _laporanService.GetBatchesAsync();
+                return Success(result, "Berhasil mengambil daftar batch.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Mendapatkan laporan detail berdasarkan Batch/Siklus ID
+        /// Mengaggregasi biaya dan pendapatan dari mulai Chick-In hingga Panen
+        /// </summary>
+        [HttpGet("batch/{batchId}")]
+        [ProducesResponseType(typeof(Common.ApiResponse<LaporanBatchDto>), 200)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 403)]
+        [ProducesResponseType(typeof(Common.ApiResponse<object>), 404)]
+        public async Task<IActionResult> GetLaporanBatch(Guid batchId)
+        {
+             try
+            {
+                if (!IsOperatorOrPemilik())
+                {
+                    return Forbidden("Akses ditolak. Fitur ini hanya untuk Operator dan Pemilik.");
+                }
+
+                var result = await _laporanService.GetLaporanBatchAsync(batchId);
+                if (result == null) 
+                {
+                    return NotFound("Batch tidak ditemukan.");
+                }
+
+                return Success(result, "Berhasil mengambil laporan batch.");
+            }
+            catch (Exception ex)
+            {
+                return HandleException(ex);
+            }
+        }
+
+        #endregion
     }
 }

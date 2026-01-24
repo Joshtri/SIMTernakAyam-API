@@ -13,34 +13,24 @@ namespace SIMTernakAyam.DTOs.HargaPasar
         public int TotalAyam { get; set; }
 
         /// <summary>
-        /// Berat rata-rata per ekor (kg)
+        /// Harga pasar per ekor (Rp/ekor)
         /// </summary>
-        public decimal BeratRataRata { get; set; }
+        public decimal HargaPerEkor { get; set; }
 
         /// <summary>
-        /// Total berat keseluruhan (kg)
-        /// </summary>
-        public decimal TotalBerat { get; set; }
-
-        /// <summary>
-        /// Harga pasar per kg yang digunakan
-        /// </summary>
-        public decimal HargaPerKg { get; set; }
-
-        /// <summary>
-        /// Total pendapatan kotor (sebelum dikurangi biaya)
+        /// Total pendapatan estimasi (Total Ayam � Harga Per Ekor)
         /// </summary>
         public decimal TotalPendapatan { get; set; }
 
         /// <summary>
-        /// Tanggal referensi harga pasar
+        /// Tanggal referensi untuk pengambilan harga pasar
         /// </summary>
         public DateTime TanggalReferensi { get; set; }
 
         /// <summary>
-        /// Informasi harga pasar yang digunakan
+        /// Informasi detail harga pasar yang digunakan
         /// </summary>
-        public HargaPasarInfoDto HargaPasarInfo { get; set; } = null!;
+        public HargaPasarInfoDto? HargaPasarInfo { get; set; }
     }
 
     /// <summary>
@@ -54,7 +44,12 @@ namespace SIMTernakAyam.DTOs.HargaPasar
         public Guid Id { get; set; }
 
         /// <summary>
-        /// Harga per kg
+        /// Harga per ekor
+        /// </summary>
+        public decimal HargaPerEkor { get; set; }
+
+        /// <summary>
+        /// Harga per kilogram
         /// </summary>
         public decimal HargaPerKg { get; set; }
 
@@ -77,6 +72,10 @@ namespace SIMTernakAyam.DTOs.HargaPasar
         /// Keterangan
         /// </summary>
         public string? Keterangan { get; set; }
+
+        public string HargaPerEkorFormatted => $"Rp {HargaPerEkor:N0}/ekor";
+        public string HargaPerKgFormatted => $"Rp {HargaPerKg:N0}/kg";
+        public string PeriodeBerlaku => $"{TanggalMulai:dd/MM/yyyy} - {(TanggalBerakhir?.ToString("dd/MM/yyyy") ?? "Sekarang")}";
     }
 
     /// <summary>

@@ -157,9 +157,14 @@ namespace SIMTernakAyam.Controllers
                 }
 
                 // Validasi business logic
-                if (createDto.HargaPerKg <= 0)
+                if (createDto.HargaPerEkor <= 0)
                 {
-                    return Error("Harga per kg harus lebih besar dari 0");
+                    return Error("Harga per ekor harus lebih besar dari 0");
+                }
+
+                if (createDto.HargaPerEkor < 10000 || createDto.HargaPerEkor > 100000)
+                {
+                    return Error("Harga per ekor harus antara Rp 10.000 - Rp 100.000");
                 }
 
                 if (createDto.TanggalBerakhir.HasValue && createDto.TanggalBerakhir <= createDto.TanggalMulai)
@@ -175,7 +180,7 @@ namespace SIMTernakAyam.Controllers
 
                 var hargaPasar = new HargaPasar
                 {
-                    HargaPerKg = createDto.HargaPerKg,
+                    HargaPerEkor = createDto.HargaPerEkor,
                     TanggalMulai = createDto.TanggalMulai,
                     TanggalBerakhir = createDto.TanggalBerakhir,
                     Keterangan = createDto.Keterangan,
@@ -222,9 +227,14 @@ namespace SIMTernakAyam.Controllers
                 }
 
                 // Validasi business logic
-                if (updateDto.HargaPerKg <= 0)
+                if (updateDto.HargaPerEkor <= 0)
                 {
-                    return Error("Harga per kg harus lebih besar dari 0");
+                    return Error("Harga per ekor harus lebih besar dari 0");
+                }
+
+                if (updateDto.HargaPerEkor < 10000 || updateDto.HargaPerEkor > 100000)
+                {
+                    return Error("Harga per ekor harus antara Rp 10.000 - Rp 100.000");
                 }
 
                 if (updateDto.TanggalBerakhir.HasValue && updateDto.TanggalBerakhir <= updateDto.TanggalMulai)
@@ -232,7 +242,7 @@ namespace SIMTernakAyam.Controllers
                     return Error("Tanggal berakhir harus lebih besar dari tanggal mulai");
                 }
 
-                existingHarga.HargaPerKg = updateDto.HargaPerKg;
+                existingHarga.HargaPerEkor = updateDto.HargaPerEkor;
                 existingHarga.TanggalMulai = updateDto.TanggalMulai;
                 existingHarga.TanggalBerakhir = updateDto.TanggalBerakhir;
                 existingHarga.Keterangan = updateDto.Keterangan;
@@ -332,14 +342,12 @@ namespace SIMTernakAyam.Controllers
         /// Menghitung estimasi keuntungan berdasarkan harga pasar aktif
         /// </summary>
         /// <param name="totalAyam">Total jumlah ayam yang dipanen</param>
-        /// <param name="beratRataRata">Berat rata-rata per ekor (kg)</param>
         /// <param name="tanggalPanen">Tanggal panen (opsional, default hari ini)</param>
         /// <returns>Estimasi keuntungan</returns>
-        [HttpGet("hitung-keuntungan")]
+        [HttpGet("estimasi-keuntungan")]
         public async Task<IActionResult> HitungKeuntungan(
             [FromQuery] int totalAyam,
-            [FromQuery] decimal beratRataRata,
-            [FromQuery] DateTime? tanggalPanen = null)
+            [FromQuery] DateTime? tanggalReferensi = null)
         {
             try
             {
@@ -348,13 +356,8 @@ namespace SIMTernakAyam.Controllers
                     return Error("Total ayam harus lebih besar dari 0");
                 }
 
-                if (beratRataRata <= 0)
-                {
-                    return Error("Berat rata-rata harus lebih besar dari 0");
-                }
-
-                var tanggalRef = tanggalPanen ?? DateTime.Now;
-                var result = await _hargaPasarService.HitungKeuntunganAsync(totalAyam, beratRataRata, tanggalRef);
+                var tanggalRef = tanggalReferensi ?? DateTime.Now;
+                var result = await _hargaPasarService.HitungKeuntunganAsync(totalAyam, tanggalRef);
                 
                 if (!result.Success)
                 {
@@ -563,7 +566,7 @@ namespace SIMTernakAyam.Controllers
                     HargaPasarAktifPadaTanggal = hargaAktif != null ? new
                     {
                         Id = hargaAktif.Id,
-                        HargaPerKg = hargaAktif.HargaPerKg,
+                        HargaPerKg = hargaAktif.HargaPerEkor,
                         TanggalMulai = hargaAktif.TanggalMulai,
                         TanggalBerakhir = hargaAktif.TanggalBerakhir,
                         IsAktif = hargaAktif.IsAktif,
@@ -573,7 +576,7 @@ namespace SIMTernakAyam.Controllers
                     HargaPasarTerbaru = hargaTerbaru != null ? new
                     {
                         Id = hargaTerbaru.Id,
-                        HargaPerKg = hargaTerbaru.HargaPerKg,
+                        HargaPerKg = hargaTerbaru.HargaPerEkor,
                         TanggalMulai = hargaTerbaru.TanggalMulai,
                         TanggalBerakhir = hargaTerbaru.TanggalBerakhir,
                         IsAktif = hargaTerbaru.IsAktif,
@@ -583,7 +586,7 @@ namespace SIMTernakAyam.Controllers
                     SemuaHargaPasar = semuaHarga.Select(h => new
                     {
                         Id = h.Id.ToString().Substring(0, 8) + "...",
-                        HargaPerKg = h.HargaPerKg,
+                        HargaPerKg = h.HargaPerEkor,
                         TanggalMulai = h.TanggalMulai.ToString("yyyy-MM-dd"),
                         TanggalBerakhir = h.TanggalBerakhir?.ToString("yyyy-MM-dd") ?? "null",
                         IsAktif = h.IsAktif,

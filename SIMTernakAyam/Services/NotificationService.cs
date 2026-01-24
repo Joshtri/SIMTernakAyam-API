@@ -198,8 +198,45 @@ namespace SIMTernakAyam.Services
 
         public async Task NotifyPanenAsync(Guid petugasId, string petugasName, string kandangName, int jumlahPanen, decimal beratTotal, Guid kandangId)
         {
-            // Not implemented yet
-            await Task.CompletedTask;
+            try
+            {
+                _logger.LogInformation("🔔 Creating notification for panen");
+
+                var pemilikIds = await _notificationRepository.GetUserIdsByRoleAsync("Pemilik");
+                var operatorIds = await _notificationRepository.GetUserIdsByRoleAsync("Operator");
+
+                var allSupervisors = pemilikIds.Concat(operatorIds).Distinct().ToList();
+
+                _logger.LogInformation("Found {Count} supervisors to notify", allSupervisors.Count);
+
+                foreach (var supervisorId in allSupervisors)
+                {
+                    if (supervisorId == petugasId) continue; // Skip sender
+
+                    var notification = new Notification
+                    {
+                        UserId = supervisorId,
+                        Title = "Panen Ayam Baru",
+                        Message = $"{petugasName} melakukan panen di {kandangName}: {jumlahPanen} ekor (Total berat: {beratTotal:N2} kg)",
+                        Type = "info",
+                        Priority = "medium",
+                        LinkUrl = $"/kandang/{kandangId}",
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdateAt = DateTime.UtcNow
+                    };
+
+                    _context.Notifications.Add(notification);
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("✅ Panen notifications created successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error creating panen notifications");
+                // Don't throw, notification is non-critical
+            }
         }
 
         public async Task NotifyOperasionalAsync(Guid petugasId, string petugasName, string jenisKegiatan, string kandangName, Guid kandangId, Guid operasionalId)

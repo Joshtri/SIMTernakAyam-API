@@ -19,6 +19,13 @@ namespace SIMTernakAyam.DTOs.Mortalitas
         [Required(ErrorMessage = "Tanggal kematian wajib diisi.")]
         public DateTime TanggalKematian { get; set; }
 
+        /// <summary>
+        /// Waktu kematian (jam:menit)
+        /// Format: HH:mm (contoh: 14:30)
+        /// </summary>
+        [Required(ErrorMessage = "Waktu kematian wajib diisi.")]
+        public TimeOnly WaktuKematian { get; set; }
+
         [Required(ErrorMessage = "Jumlah kematian wajib diisi.")]
         [Range(1, 1000000, ErrorMessage = "Jumlah kematian harus antara 1 sampai 1000000.")]
         public int JumlahKematian { get; set; }

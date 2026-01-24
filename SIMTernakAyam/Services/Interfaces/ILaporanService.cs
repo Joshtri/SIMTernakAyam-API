@@ -46,5 +46,15 @@ namespace SIMTernakAyam.Services.Interfaces
         /// Generate PDF untuk laporan kesehatan ayam
         /// </summary>
         Task<byte[]> GenerateLaporanKesehatanPdfAsync(Guid kandangId, DateTime startDate, DateTime endDate);
+
+        /// <summary>
+        /// Mendapatkan daftar batch/siklus yang tersedia
+        /// </summary>
+        Task<List<BatchOptionDto>> GetBatchesAsync();
+
+        /// <summary>
+        /// Mendapatkan laporan detail berdasarkan batch/siklus
+        /// </summary>
+        Task<LaporanBatchDto?> GetLaporanBatchAsync(Guid batchId);
     }
 }

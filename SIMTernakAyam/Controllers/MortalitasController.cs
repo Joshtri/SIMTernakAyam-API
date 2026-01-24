@@ -242,6 +242,7 @@ namespace SIMTernakAyam.Controllers
                     var result = await _mortalitasService.CreateMortalitasAutoFifoAsync(
                         dto.KandangId,
                         dto.TanggalKematian,
+                        dto.WaktuKematian,
                         dto.JumlahKematian,
                         dto.PenyebabKematian,
                         fotoFile);
@@ -256,6 +257,7 @@ namespace SIMTernakAyam.Controllers
                     var result = await _mortalitasService.CreateMortalitasManualSplitAsync(
                         dto.KandangId,
                         dto.TanggalKematian,
+                        dto.WaktuKematian,
                         dto.JumlahDariAyamLama!.Value,
                         dto.JumlahDariAyamBaru!.Value,
                         dto.PenyebabKematian,
@@ -346,6 +348,7 @@ namespace SIMTernakAyam.Controllers
                 var result = await _mortalitasService.CreateMortalitasAutoFifoAsync(
                     dto.KandangId,
                     dto.TanggalKematian,
+                    dto.WaktuKematian,
                     dto.JumlahKematian,
                     dto.PenyebabKematian,
                     fotoFile);
@@ -434,6 +437,7 @@ namespace SIMTernakAyam.Controllers
                     Id = dto.Id,
                     AyamId = dto.AyamId,
                     TanggalKematian = dto.TanggalKematian,
+                    WaktuKematian = dto.WaktuKematian,
                     JumlahKematian = dto.JumlahKematian,
                     PenyebabKematian = dto.PenyebabKematian
                 };

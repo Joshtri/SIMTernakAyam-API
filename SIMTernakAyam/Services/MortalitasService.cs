@@ -149,6 +149,7 @@ namespace SIMTernakAyam.Services
         public async Task<(bool Success, string Message, List<Mortalitas>? Data)> CreateMortalitasAutoFifoAsync(
             Guid kandangId,
             DateTime tanggalKematian,
+            TimeOnly waktuKematian,
             int jumlahKematian,
             string penyebabKematian,
             IFormFile? fotoMortalitas = null)
@@ -211,6 +212,7 @@ namespace SIMTernakAyam.Services
                 {
                     AyamId = ayamTerbaru.Id,
                     TanggalKematian = tanggalKematian,
+                    WaktuKematian = waktuKematian,
                     JumlahKematian = jumlahKematian,
                     PenyebabKematian = penyebabKematian
                 };
@@ -222,7 +224,7 @@ namespace SIMTernakAyam.Services
                 }
 
                 var message = $"Berhasil mencatat {jumlahKematian} ekor kematian pada batch ayam terbaru " +
-                    $"(masuk: {ayamTerbaru.TanggalMasuk:dd/MM/yyyy}). " +
+                    $"(masuk: {ayamTerbaru.TanggalMasuk:dd/MM/yyyy} pukul {waktuKematian:HH:mm}). " +
                     $"Sisa ayam di batch ini: {totalAyamTersedia - jumlahKematian} ekor.";
 
                 return (true, message, new List<Mortalitas> { result.Data! });
@@ -240,6 +242,7 @@ namespace SIMTernakAyam.Services
         public async Task<(bool Success, string Message, List<Mortalitas>? Data)> CreateMortalitasManualSplitAsync(
             Guid kandangId,
             DateTime tanggalKematian,
+            TimeOnly waktuKematian,
             int jumlahDariAyamLama,
             int jumlahDariAyamBaru,
             string penyebabKematian,
@@ -333,6 +336,7 @@ namespace SIMTernakAyam.Services
                     {
                         AyamId = ayamLama.Id,
                         TanggalKematian = tanggalKematian,
+                        WaktuKematian = waktuKematian,
                         JumlahKematian = jumlahDariAyamLama,
                         PenyebabKematian = penyebabKematian
                     };
@@ -353,6 +357,7 @@ namespace SIMTernakAyam.Services
                     {
                         AyamId = ayamBaru.Id,
                         TanggalKematian = tanggalKematian,
+                        WaktuKematian = waktuKematian,
                         JumlahKematian = jumlahDariAyamBaru,
                         PenyebabKematian = penyebabKematian
                     };
@@ -366,7 +371,7 @@ namespace SIMTernakAyam.Services
                     mortalitasList.Add(resultBaru.Data!);
                 }
 
-                var message = $"Berhasil membuat {mortalitasList.Count} record mortalitas. " +
+                var message = $"Berhasil membuat {mortalitasList.Count} record mortalitas pada pukul {waktuKematian:HH:mm}. " +
                     $"Total kematian: {totalKematian} ekor " +
                     $"(Ayam lama: {jumlahDariAyamLama}, Ayam baru: {jumlahDariAyamBaru}).";
 

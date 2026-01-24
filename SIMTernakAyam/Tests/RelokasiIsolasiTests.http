@@ -1,0 +1,266 @@
+### ============================================================
+### TEST FILE: Fitur Kandang Isolasi & Relokasi Ayam
+### ============================================================
+### Gunakan file ini untuk testing endpoints relokasi ayam
+### ke kandang isolasi.
+###
+### PREREQUISITE:
+### 1. Jalankan: dotnet ef database update
+### 2. Jalankan aplikasi: dotnet run
+### 3. Login dan dapatkan token
+### ============================================================
+
+@baseUrl = http://localhost:5099
+@token = YOUR_JWT_TOKEN_HERE
+
+### ============================================================
+### 1. LOGIN (dapatkan token dulu)
+### ============================================================
+
+### Login sebagai admin/petugas
+POST {{baseUrl}}/api/user/login
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "admin123"
+}
+
+### ============================================================
+### 2. KANDANG - Buat Kandang Isolasi Baru
+### ============================================================
+
+### Get all kandang (lihat yang ada)
+GET {{baseUrl}}/api/kandangs
+Authorization: Bearer {{token}}
+
+### Create kandang isolasi baru
+POST {{baseUrl}}/api/kandangs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "namaKandang": "Kandang Isolasi A",
+    "kapasitas": 100,
+    "lokasi": "Blok Isolasi",
+    "petugasId": "PETUGAS_ID_HERE",
+    "tipeKandang": "Isolasi"
+}
+
+### Create kandang normal (untuk testing)
+POST {{baseUrl}}/api/kandangs
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "namaKandang": "Kandang Produksi B",
+    "kapasitas": 1000,
+    "lokasi": "Blok B",
+    "petugasId": "PETUGAS_ID_HERE",
+    "tipeKandang": "Normal"
+}
+
+### ============================================================
+### 3. AYAM - Input batch ayam ke kandang normal
+### ============================================================
+
+### Get all ayam (lihat batch yang ada)
+GET {{baseUrl}}/api/ayams?period=all
+Authorization: Bearer {{token}}
+
+### Create batch ayam baru di kandang normal
+POST {{baseUrl}}/api/ayams
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "kandangId": "KANDANG_NORMAL_ID_HERE",
+    "tanggalMasuk": "2026-01-23T00:00:00Z",
+    "jumlahMasuk": 500,
+    "forceInput": false
+}
+
+### ============================================================
+### 4. RELOKASI - Pindahkan ayam sakit ke kandang isolasi
+### ============================================================
+
+### Get all relokasi
+GET {{baseUrl}}/api/relokasi
+Authorization: Bearer {{token}}
+
+### Get relokasi by kandang
+GET {{baseUrl}}/api/relokasi/kandang/KANDANG_ID_HERE
+Authorization: Bearer {{token}}
+
+### ============================================================
+### CREATE RELOKASI - Pindahkan 5 ekor ayam sakit ke isolasi
+### ============================================================
+
+POST {{baseUrl}}/api/relokasi
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "kandangAsalId": "KANDANG_NORMAL_ID_HERE",
+    "kandangTujuanId": "KANDANG_ISOLASI_ID_HERE",
+    "ayamAsalId": "AYAM_BATCH_ID_HERE",
+    "jumlahEkor": 5,
+    "tanggalRelokasi": "2026-01-23T08:00:00Z",
+    "alasanRelokasi": "Sakit",
+    "catatan": "Gejala flu burung, diberi obat Amoxicillin 3x sehari"
+}
+
+### ============================================================
+### CREATE RELOKASI - Pindahkan ayam untuk karantina preventif
+### ============================================================
+
+POST {{baseUrl}}/api/relokasi
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "kandangAsalId": "KANDANG_NORMAL_ID_HERE",
+    "kandangTujuanId": "KANDANG_ISOLASI_ID_HERE",
+    "ayamAsalId": "AYAM_BATCH_ID_HERE",
+    "jumlahEkor": 10,
+    "tanggalRelokasi": "2026-01-23T09:00:00Z",
+    "alasanRelokasi": "Karantina",
+    "catatan": "Karantina preventif karena kontak dengan ayam sakit"
+}
+
+### ============================================================
+### CREATE RELOKASI - Ayam pulih, pindahkan kembali ke normal
+### ============================================================
+
+POST {{baseUrl}}/api/relokasi
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "kandangAsalId": "KANDANG_ISOLASI_ID_HERE",
+    "kandangTujuanId": "KANDANG_NORMAL_ID_HERE",
+    "ayamAsalId": "AYAM_ISOLASI_BATCH_ID_HERE",
+    "jumlahEkor": 3,
+    "tanggalRelokasi": "2026-01-25T10:00:00Z",
+    "alasanRelokasi": "Pulih",
+    "catatan": "Sudah sehat, kondisi normal kembali"
+}
+
+### ============================================================
+### 5. VERIFIKASI - Cek perubahan stok
+### ============================================================
+
+### Get ayam detail (cek stok berkurang karena relokasi)
+GET {{baseUrl}}/api/ayams/AYAM_BATCH_ID_HERE
+Authorization: Bearer {{token}}
+
+### Get ayam di kandang isolasi (cek batch baru terbuat)
+GET {{baseUrl}}/api/ayams?kandangId=KANDANG_ISOLASI_ID_HERE
+Authorization: Bearer {{token}}
+
+### Get ayam yang masih ada sisa di kandang normal
+GET {{baseUrl}}/api/ayams/kandang/KANDANG_NORMAL_ID_HERE/sisa
+Authorization: Bearer {{token}}
+
+### ============================================================
+### 6. UPDATE & BATALKAN RELOKASI
+### ============================================================
+
+### Get relokasi detail
+GET {{baseUrl}}/api/relokasi/RELOKASI_ID_HERE
+Authorization: Bearer {{token}}
+
+### Update relokasi (catatan/status)
+PUT {{baseUrl}}/api/relokasi/RELOKASI_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "id": "RELOKASI_ID_HERE",
+    "catatan": "Update: Ayam masih dalam observasi lanjutan",
+    "statusRelokasi": "Selesai"
+}
+
+### Batalkan relokasi (status jadi Dibatalkan)
+PUT {{baseUrl}}/api/relokasi/RELOKASI_ID_HERE/batal
+Authorization: Bearer {{token}}
+
+### Delete relokasi (hard delete)
+DELETE {{baseUrl}}/api/relokasi/RELOKASI_ID_HERE
+Authorization: Bearer {{token}}
+
+### ============================================================
+### 7. ERROR CASES - Testing validasi
+### ============================================================
+
+### Error: Stok tidak mencukupi
+POST {{baseUrl}}/api/relokasi
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "kandangAsalId": "KANDANG_NORMAL_ID_HERE",
+    "kandangTujuanId": "KANDANG_ISOLASI_ID_HERE",
+    "ayamAsalId": "AYAM_BATCH_ID_HERE",
+    "jumlahEkor": 99999,
+    "tanggalRelokasi": "2026-01-23T08:00:00Z",
+    "alasanRelokasi": "Sakit",
+    "catatan": "Test error - stok tidak cukup"
+}
+
+### Error: Kandang asal dan tujuan sama
+POST {{baseUrl}}/api/relokasi
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "kandangAsalId": "KANDANG_SAME_ID",
+    "kandangTujuanId": "KANDANG_SAME_ID",
+    "ayamAsalId": "AYAM_BATCH_ID_HERE",
+    "jumlahEkor": 5,
+    "tanggalRelokasi": "2026-01-23T08:00:00Z",
+    "alasanRelokasi": "Sakit"
+}
+
+### Error: Batch ayam tidak berada di kandang asal
+POST {{baseUrl}}/api/relokasi
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "kandangAsalId": "KANDANG_A_ID",
+    "kandangTujuanId": "KANDANG_B_ID",
+    "ayamAsalId": "AYAM_DI_KANDANG_C_ID",
+    "jumlahEkor": 5,
+    "tanggalRelokasi": "2026-01-23T08:00:00Z",
+    "alasanRelokasi": "Sakit"
+}
+
+### ============================================================
+### CATATAN PENTING:
+### ============================================================
+###
+### 1. Ganti placeholder dengan ID yang valid:
+###    - YOUR_JWT_TOKEN_HERE
+###    - PETUGAS_ID_HERE
+###    - KANDANG_NORMAL_ID_HERE
+###    - KANDANG_ISOLASI_ID_HERE
+###    - AYAM_BATCH_ID_HERE
+###    - RELOKASI_ID_HERE
+###
+### 2. AlasanRelokasi values:
+###    - "Sakit" (0)
+###    - "Karantina" (1)
+###    - "Pulih" (2)
+###    - "Lainnya" (3)
+###
+### 3. TipeKandang values:
+###    - "Normal" (0) - default
+###    - "Isolasi" (1)
+###
+### 4. StatusRelokasi values:
+###    - "Pending" (0)
+###    - "Selesai" (1)
+###    - "Dibatalkan" (2)
+###
+### ============================================================

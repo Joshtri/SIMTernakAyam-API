@@ -26,6 +26,7 @@ namespace SIMTernakAyam.Services.Interfaces
         /// </summary>
         /// <param name="kandangId">ID kandang</param>
         /// <param name="tanggalKematian">Tanggal kematian</param>
+        /// <param name="waktuKematian">Waktu kematian (HH:mm)</param>
         /// <param name="jumlahKematian">Total jumlah kematian</param>
         /// <param name="penyebabKematian">Penyebab kematian</param>
         /// <param name="fotoMortalitas">File foto bukti mortalitas (optional)</param>
@@ -33,6 +34,7 @@ namespace SIMTernakAyam.Services.Interfaces
         Task<(bool Success, string Message, List<Mortalitas>? Data)> CreateMortalitasAutoFifoAsync(
             Guid kandangId,
             DateTime tanggalKematian,
+            TimeOnly waktuKematian,
             int jumlahKematian,
             string penyebabKematian,
             IFormFile? fotoMortalitas = null);
@@ -42,6 +44,7 @@ namespace SIMTernakAyam.Services.Interfaces
         /// </summary>
         /// <param name="kandangId">ID kandang</param>
         /// <param name="tanggalKematian">Tanggal kematian</param>
+        /// <param name="waktuKematian">Waktu kematian (HH:mm)</param>
         /// <param name="jumlahDariAyamLama">Jumlah kematian dari ayam periode lama/sisa</param>
         /// <param name="jumlahDariAyamBaru">Jumlah kematian dari ayam periode baru</param>
         /// <param name="penyebabKematian">Penyebab kematian</param>
@@ -50,6 +53,7 @@ namespace SIMTernakAyam.Services.Interfaces
         Task<(bool Success, string Message, List<Mortalitas>? Data)> CreateMortalitasManualSplitAsync(
             Guid kandangId,
             DateTime tanggalKematian,
+            TimeOnly waktuKematian,
             int jumlahDariAyamLama,
             int jumlahDariAyamBaru,
             string penyebabKematian,

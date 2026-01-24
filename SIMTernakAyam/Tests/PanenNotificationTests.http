@@ -1,0 +1,158 @@
+### ============================================================
+### PANEN NOTIFICATION TESTS
+### Testing notifikasi otomatis untuk Pemilik ketika ada panen
+### ============================================================
+
+@baseUrl = http://localhost:5224/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjgzNWIyNTE5LWJhMGYtNGEyOC05N2Y4LThjZDQ1NWY4ZjAyOSIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJBZG1pbiBVc2VyIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiT3BlcmF0b3IiLCJleHAiOjE3Mzg4MjE3ODgsImlzcyI6InNpbXRlcm5ha2F5YW0uYXBpIiwiYXVkIjoic2ltdGVybmFrYXlhbS5jbGllbnQifQ.Ciq6_RgVJlHAKO8Tt5NU2VptVGSM6RDVQZxp9uNlkXs
+@pemilikToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your_pemilik_token_here
+@kandangId = 1bc6ba27-0e92-42aa-b3fa-67b3e78e2cf4
+@ayamId = 7b891856-a1f8-4a8b-9f1a-8f1f4b4f4f4f
+
+### ============================================================
+### 1. CREATE PANEN MANUAL - Should trigger notification
+### ============================================================
+
+POST {{baseUrl}}/panen
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "ayamId": "{{ayamId}}",
+  "tanggalPanen": "2026-01-25T10:00:00",
+  "jumlahEkorPanen": 50,
+  "beratRataRata": 1.8
+}
+
+### Expected Response:
+# - 201 Created
+# - Panen berhasil dibuat
+# - Notification should be sent to Pemilik and Operator automatically
+
+### ============================================================
+### 2. CREATE PANEN AUTO FIFO - Should trigger notification
+### ============================================================
+
+POST {{baseUrl}}/panen/auto-fifo
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2026-01-25T11:00:00",
+  "jumlahEkorPanen": 100,
+  "beratRataRata": 1.9
+}
+
+### Expected Response:
+# - 201 Created
+# - Multiple panen records created
+# - Notification should be sent to Pemilik and Operator
+
+### ============================================================
+### 3. CREATE PANEN MANUAL SPLIT - Should trigger notification
+### ============================================================
+
+POST {{baseUrl}}/panen/manual-split
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "kandangId": "{{kandangId}}",
+  "tanggalPanen": "2026-01-25T12:00:00",
+  "jumlahDariAyamLama": 30,
+  "jumlahDariAyamBaru": 70,
+  "beratRataRata": 2.0
+}
+
+### Expected Response:
+# - 201 Created
+# - Multiple panen records created
+# - Notification should be sent to Pemilik and Operator
+
+### ============================================================
+### 4. GET NOTIFICATIONS (as Pemilik)
+### ============================================================
+
+GET {{baseUrl}}/notification?page=1&limit=20
+Authorization: Bearer {{pemilikToken}}
+
+### Expected Response:
+# - Should show notifications for panen that were just created
+# - Title: "Panen Ayam Baru"
+# - Message: "{petugas_name} melakukan panen di {kandang_name}: {jumlah} ekor (Total berat: {berat} kg)"
+# - Type: "info"
+# - Priority: "medium"
+
+### ============================================================
+### 5. GET UNREAD COUNT (as Pemilik)
+### ============================================================
+
+GET {{baseUrl}}/notification/unread-count
+Authorization: Bearer {{pemilikToken}}
+
+### Expected Response:
+# - Should return count of unread notifications
+
+### ============================================================
+### 6. MARK NOTIFICATION AS READ
+### ============================================================
+
+@notificationId = notification-id-here
+
+PUT {{baseUrl}}/notification/{{notificationId}}/read
+Authorization: Bearer {{pemilikToken}}
+
+### Expected Response:
+# - Notification marked as read
+# - ReadAt timestamp updated
+
+### ============================================================
+### TEST SCENARIOS
+### ============================================================
+
+# Scenario 1: Petugas creates panen
+# Expected:
+# - Panen created successfully
+# - Notification sent to all Pemilik users
+# - Notification sent to all Operator users (except the one who created the panen)
+# - Notification contains:
+#   * Title: "Panen Ayam Baru"
+#   * Message with petugas name, kandang name, jumlah ekor, total berat
+#   * Link to kandang detail
+#   * Type: "info"
+#   * Priority: "medium"
+
+# Scenario 2: Multiple panens in short period
+# Expected:
+# - Each panen creates separate notification
+# - Notifications are ordered by creation time (newest first)
+
+# Scenario 3: Pemilik checks notifications
+# Expected:
+# - Can see all panen notifications
+# - Can mark as read
+# - Unread count decreases after marking as read
+
+### ============================================================
+### DEBUGGING
+### ============================================================
+
+# If notifications are not showing up:
+# 1. Check if NotificationService.NotifyPanenAsync is being called
+# 2. Check if user has role "Pemilik" or "Operator"
+# 3. Check database for notification records
+# 4. Check logs for errors
+
+### Query to check notifications in DB:
+# SELECT * FROM "Notifications" 
+# WHERE "Title" = 'Panen Ayam Baru' 
+# ORDER BY "CreatedAt" DESC;
+
+### ============================================================
+### CLEANUP (Optional)
+### ============================================================
+
+# Delete test notifications
+# DELETE {{baseUrl}}/notification/{{notificationId}}
+# Authorization: Bearer {{pemilikToken}}

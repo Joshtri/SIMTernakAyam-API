@@ -573,5 +573,146 @@ namespace SIMTernakAyam.Services
             var pdfGenerator = new LaporanKesehatanPdf(laporan);
             return pdfGenerator.GeneratePdf();
         }
+
+        #region Batch Reporting
+
+        public async Task<List<BatchOptionDto>> GetBatchesAsync()
+        {
+            var batches = await _context.Ayams
+                .Include(a => a.Kandang)
+                .OrderByDescending(a => a.TanggalMasuk)
+                .Select(a => new { a.Id, a.TanggalMasuk, KandangNama = a.Kandang.NamaKandang })
+                .ToListAsync();
+
+            return batches.Select(b => new BatchOptionDto
+            {
+                Id = b.Id,
+                Name = $"Batch {b.TanggalMasuk:MMM yyyy} - {b.KandangNama}"
+            }).ToList();
+        }
+
+        public async Task<LaporanBatchDto?> GetLaporanBatchAsync(Guid batchId)
+        {
+            var ayam = await _context.Ayams
+                .Include(a => a.Kandang)
+                .FirstOrDefaultAsync(a => a.Id == batchId);
+
+            if (ayam == null) return null;
+
+            var panens = await _context.Panens
+                .Where(p => p.AyamId == batchId)
+                .OrderBy(p => p.TanggalPanen)
+                .ToListAsync();
+
+            var tanggalMulai = ayam.TanggalMasuk;
+            var tanggalSelesai = panens.Any() ? panens.Max(p => p.TanggalPanen) : (DateTime?)null;
+            var calculationEndDate = tanggalSelesai ?? DateTime.Now;
+
+            // Calculate Expenses
+            var expenses = await _context.Biayas
+                .Where(b => b.KandangId == ayam.KandangId &&
+                            b.Tanggal >= tanggalMulai &&
+                            b.Tanggal <= calculationEndDate)
+                .ToListAsync();
+
+            var totalBiaya = expenses.Sum(b => b.Jumlah);
+
+            // Breakdown Expenses
+            // Use Contains for simple keyword matching if explicit ID is missing (fallback)
+            var biayaPakan = expenses.Where(b => b.JenisBiaya.Contains("Pakan", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah);
+            var biayaVaksin = expenses.Where(b => b.JenisBiaya.Contains("Vaksin", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah);
+            var biayaLain = totalBiaya - biayaPakan - biayaVaksin;
+
+            // Calculate Revenue
+            decimal totalPendapatan = 0;
+            if (panens.Any())
+            {
+                // Get latest market price or average valid for the harvest date
+                // Ideally, we should get price at harvest date.
+                // Since this is a simple implementation, we take the latest price available.
+                var latestPrice = await _context.HargaPasar
+                    .OrderByDescending(h => h.TanggalMulai)
+                    .FirstOrDefaultAsync();
+                
+                var hargaPerEkor = latestPrice?.HargaPerEkor ?? 25000; // Default fallback
+
+                // Use Per Ekor calculation as requested by recent migration
+                foreach (var p in panens)
+                {
+                    totalPendapatan += p.JumlahEkorPanen * hargaPerEkor;
+                }
+            }
+
+            var populasiAwal = ayam.JumlahMasuk;
+            var totalKematian = await _context.Mortalitas
+                .Where(m => m.AyamId == batchId)
+                .SumAsync(m => m.JumlahKematian);
+
+            var totalPanen = panens.Sum(p => p.JumlahEkorPanen);
+            var populasiSaatIni = populasiAwal - totalKematian - totalPanen;
+            if (populasiSaatIni < 0) populasiSaatIni = 0;
+
+            // Calculate Performance Metrics
+            double mortalityRate = populasiAwal > 0 ? (double)totalKematian / populasiAwal * 100 : 0;
+            decimal avgWeight = panens.Any() ? panens.Average(p => p.BeratRataRata) : 0;
+            
+            // FCR Calculation (Total Feed / Total Weight Gained)
+            // We need Pakan usage specifically from Operasionals or Biaya??
+            // Ideally from Operasional which tracks quantity (kg). Biaya tracks money (Rp).
+            // Let's try to query Operasional for FCR accuracy
+            double fcr = 0;
+            
+            try 
+            {
+                var pakanUsedKg = await _context.Operasionals
+                     .Where(o => o.KandangId == ayam.KandangId && 
+                                 o.Tanggal >= tanggalMulai && 
+                                 o.Tanggal <= calculationEndDate &&
+                                 o.PakanId != null)
+                     .SumAsync(o => o.Jumlah);
+
+                var totalWeightHarvested = panens.Sum(p => p.JumlahEkorPanen * p.BeratRataRata);
+                
+                if (totalWeightHarvested > 0)
+                {
+                    fcr = (double)pakanUsedKg / (double)totalWeightHarvested;
+                }
+            }
+            catch 
+            {
+                // Ignore FCR errors if Operasional table has issues
+                fcr = 0;
+            }
+
+            return new LaporanBatchDto
+            {
+                BatchId = ayam.Id,
+                KandangId = ayam.KandangId,
+                NamaKandang = ayam.Kandang?.NamaKandang ?? "-",
+                Periode = $"{tanggalMulai:dd MMM yyyy} - {(tanggalSelesai.HasValue ? tanggalSelesai.Value.ToString("dd MMM yyyy") : "Sekarang")}",
+                TanggalMulai = tanggalMulai,
+                TanggalSelesai = tanggalSelesai,
+                Status = tanggalSelesai.HasValue ? "Selesai" : "Aktif",
+                
+                PopulasiAwal = populasiAwal,
+                PopulasiSaatIni = populasiSaatIni,
+                TotalKematian = totalKematian,
+                TotalPanen = totalPanen,
+                
+                TotalPendapatan = totalPendapatan,
+                TotalBiaya = totalBiaya,
+                Keuntungan = totalPendapatan - totalBiaya,
+                
+                BiayaPakan = biayaPakan,
+                BiayaVaksin = biayaVaksin,
+                BiayaOperasionalLain = biayaLain,
+
+                FCR = Math.Round(fcr, 2),
+                MortalityRate = Math.Round(mortalityRate, 2),
+                AverageWeight = Math.Round(avgWeight, 2)
+            };
+        }
+
+        #endregion
     }
 }

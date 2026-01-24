@@ -13,6 +13,13 @@ namespace SIMTernakAyam.DTOs.Mortalitas
         
         // Detail Mortalitas
         public DateTime TanggalKematian { get; set; }
+        
+        /// <summary>
+        /// Waktu kematian (jam:menit)
+        /// Format: HH:mm (contoh: 14:30)
+        /// </summary>
+        public TimeOnly WaktuKematian { get; set; }
+        
         public int JumlahKematian { get; set; }
         public string PenyebabKematian { get; set; } = string.Empty;
         public string? FotoMortalitas { get; set; }  // Path foto bukti mortalitas
@@ -58,6 +65,7 @@ namespace SIMTernakAyam.DTOs.Mortalitas
                              mortalitas.Ayam?.Kandang?.User?.Username ?? "Unknown",
                 
                 TanggalKematian = mortalitas.TanggalKematian,
+                WaktuKematian = mortalitas.WaktuKematian,
                 JumlahKematian = mortalitas.JumlahKematian,
                 PenyebabKematian = mortalitas.PenyebabKematian,
                 FotoMortalitas = mortalitas.FotoMortalitas,

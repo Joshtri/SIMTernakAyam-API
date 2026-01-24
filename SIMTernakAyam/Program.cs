@@ -83,6 +83,7 @@ builder.Services.AddScoped<IKandangAsistenRepository, KandangAsistenRepository>(
 builder.Services.AddScoped<IJurnalHarianRepository, JurnalHarianRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IHargaPasarRepository, HargaPasarRepository>();
+builder.Services.AddScoped<IRelokasiRepository, RelokasiRepository>();
 
 // Services
 builder.Services.AddScoped<IUserService, UserService>();
@@ -103,6 +104,7 @@ builder.Services.AddScoped<IJurnalHarianService, JurnalHarianService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IHargaPasarService, HargaPasarService>();
 builder.Services.AddScoped<IFifoService, FifoService>();
+builder.Services.AddScoped<IRelokasiService, RelokasiService>();
 
 // Controller & JSON Config
 builder.Services.AddControllers(options =>
