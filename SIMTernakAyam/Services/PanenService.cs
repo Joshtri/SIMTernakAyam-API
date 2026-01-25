@@ -232,15 +232,16 @@ namespace SIMTernakAyam.Services
                     return (false, "Berat rata-rata harus antara 0.01 sampai 100.00 kg.", null);
                 }
 
-                if (tanggalPanen > DateTime.UtcNow)
-                {
-                    return (false, "Tanggal panen tidak boleh di masa depan.", null);
-                }
-
-                // Ensure tanggalPanen is UTC
+                // Ensure tanggalPanen is UTC first before comparison
                 if (tanggalPanen.Kind != DateTimeKind.Utc)
                 {
                     tanggalPanen = tanggalPanen.ToUniversalTime();
+                }
+
+                // Compare dates only to avoid timezone issues
+                if (tanggalPanen.Date > DateTime.UtcNow.Date)
+                {
+                    return (false, "Tanggal panen tidak boleh di masa depan.", null);
                 }
 
                 // ? Use FifoService to distribute the harvest across ayam entries
@@ -325,12 +326,7 @@ namespace SIMTernakAyam.Services
                     return (false, "Berat rata-rata harus antara 0.01 sampai 100.00 kg.", null);
                 }
 
-                if (tanggalPanen > DateTime.UtcNow)
-                {
-                    return (false, "Tanggal panen tidak boleh di masa depan.", null);
-                }
-
-                // Ensure tanggalPanen is UTC
+                // Ensure tanggalPanen is UTC first before comparison
                 if (tanggalPanen.Kind == DateTimeKind.Unspecified)
                 {
                     tanggalPanen = DateTime.SpecifyKind(tanggalPanen, DateTimeKind.Utc);
@@ -338,6 +334,12 @@ namespace SIMTernakAyam.Services
                 else if (tanggalPanen.Kind == DateTimeKind.Local)
                 {
                     tanggalPanen = tanggalPanen.ToUniversalTime();
+                }
+
+                // Compare dates only to avoid timezone issues
+                if (tanggalPanen.Date > DateTime.UtcNow.Date)
+                {
+                    return (false, "Tanggal panen tidak boleh di masa depan.", null);
                 }
 
                 var panenList = new List<Panen>();
@@ -523,7 +525,8 @@ namespace SIMTernakAyam.Services
                 return new ValidationResult { IsValid = false, ErrorMessage = "Berat rata-rata harus antara 0.01 sampai 100.00 kg." };
             }
 
-            if (entity.TanggalPanen > DateTime.UtcNow)
+            // Compare dates only to avoid timezone issues
+            if (entity.TanggalPanen.Date > DateTime.UtcNow.Date)
             {
                 return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal panen tidak boleh di masa depan." };
             }

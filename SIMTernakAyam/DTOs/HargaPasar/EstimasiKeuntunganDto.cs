@@ -210,6 +210,11 @@ namespace SIMTernakAyam.DTOs.HargaPasar
         /// Rata-rata berat per ekor
         /// </summary>
         public decimal RataRataBeratPerEkor { get; set; }
+
+        /// <summary>
+        /// Rata-rata harga per ekor
+        /// </summary>
+        public decimal RataRataHargaPerEkor { get; set; }
     }
 
     /// <summary>

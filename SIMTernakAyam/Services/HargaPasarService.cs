@@ -152,7 +152,7 @@ namespace SIMTernakAyam.Services
                     return (false, $"Tidak ada harga pasar yang aktif pada tanggal {tanggalReferensi:dd/MM/yyyy}", null);
                 }
 
-                // Hitung estimasi keuntungan (Total Ayam × Harga Per Ekor)
+                // Hitung estimasi keuntungan (Total Ayam ï¿½ Harga Per Ekor)
                 var totalPendapatan = totalAyam * hargaPasar.HargaPerEkor;
 
                 var estimasi = new EstimasiKeuntunganDto
@@ -165,6 +165,7 @@ namespace SIMTernakAyam.Services
                     {
                         Id = hargaPasar.Id,
                         HargaPerEkor = hargaPasar.HargaPerEkor,
+                        HargaPerKg = hargaPasar.HargaPerKg,
                         TanggalMulai = hargaPasar.TanggalMulai,
                         TanggalBerakhir = hargaPasar.TanggalBerakhir,
                         Wilayah = hargaPasar.Wilayah,
@@ -198,11 +199,11 @@ namespace SIMTernakAyam.Services
                     return (false, $"Tidak ada harga pasar yang aktif pada tanggal panen {panen.TanggalPanen:dd/MM/yyyy}", null);
                 }
 
-                // Hitung total berat dari jumlah ekor × berat rata-rata
+                // Hitung total berat dari jumlah ekor Ã— berat rata-rata
                 var totalBerat = panen.JumlahEkorPanen * panen.BeratRataRata;
 
-                // Hitung total pendapatan
-                var totalPendapatan = totalBerat * hargaPasar.HargaPerEkor;
+                // Hitung total pendapatan (berat Ã— harga per kg)
+                var totalPendapatan = totalBerat * hargaPasar.HargaPerKg;
 
                 var keuntunganPanen = new KeuntunganPanenDto
                 {
@@ -211,13 +212,14 @@ namespace SIMTernakAyam.Services
                     JumlahAyam = panen.JumlahEkorPanen,
                     TotalBerat = totalBerat,
                     BeratRataRata = panen.BeratRataRata,
-                    HargaPerKg = hargaPasar.HargaPerEkor,
+                    HargaPerKg = hargaPasar.HargaPerKg,
                     TotalPendapatan = totalPendapatan,
                     NamaKandang = panen.Ayam?.Kandang?.NamaKandang ?? "N/A",
                     HargaPasarInfo = new HargaPasarInfoDto
                     {
                         Id = hargaPasar.Id,
                         HargaPerEkor = hargaPasar.HargaPerEkor,
+                        HargaPerKg = hargaPasar.HargaPerKg,
                         TanggalMulai = hargaPasar.TanggalMulai,
                         TanggalBerakhir = hargaPasar.TanggalBerakhir,
                         Wilayah = hargaPasar.Wilayah,
@@ -249,7 +251,8 @@ namespace SIMTernakAyam.Services
                 
                 var detailPanen = new List<KeuntunganPanenDto>();
                 var totalKeuntungan = new TotalKeuntunganDto();
-                var daftarHarga = new List<decimal>();
+                var daftarHargaPerEkor = new List<decimal>();
+                var daftarHargaPerKg = new List<decimal>();
 
                 foreach (var panen in panenList)
                 {
@@ -257,9 +260,9 @@ namespace SIMTernakAyam.Services
                     var hargaPasar = await _hargaPasarRepository.GetHargaAktifByTanggalAsync(panen.TanggalPanen);
                     if (hargaPasar == null) continue;
 
-                    // Hitung keuntungan per panen
+                    // Hitung keuntungan per panen (berat Ã— harga per kg)
                     var totalBerat = panen.JumlahEkorPanen * panen.BeratRataRata;
-                    var totalPendapatan = totalBerat * hargaPasar.HargaPerEkor;
+                    var totalPendapatan = totalBerat * hargaPasar.HargaPerKg;
 
                     detailPanen.Add(new KeuntunganPanenDto
                     {
@@ -268,13 +271,14 @@ namespace SIMTernakAyam.Services
                         JumlahAyam = panen.JumlahEkorPanen,
                         TotalBerat = totalBerat,
                         BeratRataRata = panen.BeratRataRata,
-                        HargaPerKg = hargaPasar.HargaPerEkor,
+                        HargaPerKg = hargaPasar.HargaPerKg,
                         TotalPendapatan = totalPendapatan,
                         NamaKandang = panen.Ayam?.Kandang?.NamaKandang ?? "N/A",
                         HargaPasarInfo = new HargaPasarInfoDto
                         {
                             Id = hargaPasar.Id,
                             HargaPerEkor = hargaPasar.HargaPerEkor,
+                            HargaPerKg = hargaPasar.HargaPerKg,
                             TanggalMulai = hargaPasar.TanggalMulai,
                             TanggalBerakhir = hargaPasar.TanggalBerakhir,
                             Wilayah = hargaPasar.Wilayah,
@@ -287,22 +291,26 @@ namespace SIMTernakAyam.Services
                     totalKeuntungan.TotalAyam += panen.JumlahEkorPanen;
                     totalKeuntungan.TotalBerat += totalBerat;
                     totalKeuntungan.TotalPendapatan += totalPendapatan;
-                    
-                    daftarHarga.Add(hargaPasar.HargaPerEkor);
+
+                    daftarHargaPerEkor.Add(hargaPasar.HargaPerEkor);
+                    daftarHargaPerKg.Add(hargaPasar.HargaPerKg);
                 }
 
                 // Hitung rata-rata
-                totalKeuntungan.RataRataBeratPerEkor = totalKeuntungan.TotalAyam > 0 ? 
+                totalKeuntungan.RataRataBeratPerEkor = totalKeuntungan.TotalAyam > 0 ?
                     totalKeuntungan.TotalBerat / totalKeuntungan.TotalAyam : 0;
 
-                var rataRataHarga = daftarHarga.Any() ? daftarHarga.Average() : 0;
+                // Hitung rata-rata harga per ekor
+                totalKeuntungan.RataRataHargaPerEkor = daftarHargaPerEkor.Any() ? daftarHargaPerEkor.Average() : 0;
 
-                // Hitung fluktuasi harga
+                var rataRataHargaPerKg = daftarHargaPerKg.Any() ? daftarHargaPerKg.Average() : 0;
+
+                // Hitung fluktuasi harga (berdasarkan HargaPerKg)
                 var fluktuasi = new FluktusiHargaDto();
-                if (daftarHarga.Any())
+                if (daftarHargaPerKg.Any())
                 {
-                    fluktuasi.HargaTerendah = daftarHarga.Min();
-                    fluktuasi.HargaTertinggi = daftarHarga.Max();
+                    fluktuasi.HargaTerendah = daftarHargaPerKg.Min();
+                    fluktuasi.HargaTertinggi = daftarHargaPerKg.Max();
                     fluktuasi.SelisihHarga = fluktuasi.HargaTertinggi - fluktuasi.HargaTerendah;
                     fluktuasi.PersentaseFluktuasi = fluktuasi.HargaTerendah > 0 ? 
                         (fluktuasi.SelisihHarga / fluktuasi.HargaTerendah) * 100 : 0;
@@ -318,7 +326,7 @@ namespace SIMTernakAyam.Services
                     },
                     Total = totalKeuntungan,
                     DetailPanen = detailPanen,
-                    RataRataHargaPerKg = rataRataHarga,
+                    RataRataHargaPerKg = rataRataHargaPerKg,
                     FluktusiHarga = fluktuasi
                 };
 
@@ -379,8 +387,10 @@ namespace SIMTernakAyam.Services
                         // ? ENHANCED: Tetap tampilkan data meskipun tidak ada harga pasar
                         if (hargaPasar != null)
                         {
-                            pendapatanPanen = totalBerat * hargaPasar.HargaPerEkor;
-                            hargaPerKg = hargaPasar.HargaPerEkor;
+                            // Gunakan HargaPerKg untuk perhitungan berbasis berat
+                            pendapatanPanen = totalBerat * hargaPasar.HargaPerKg;
+                            hargaPerKg = hargaPasar.HargaPerKg;
+                            // Simpan HargaPerEkor untuk rata-rata harga per ekor
                             daftarHarga.Add(hargaPasar.HargaPerEkor);
 
                             // Simpan info harga pasar
@@ -390,6 +400,7 @@ namespace SIMTernakAyam.Services
                                 {
                                     Id = hargaPasar.Id,
                                     HargaPerEkor = hargaPasar.HargaPerEkor,
+                                    HargaPerKg = hargaPasar.HargaPerKg,
                                     TanggalMulai = hargaPasar.TanggalMulai,
                                     TanggalBerakhir = hargaPasar.TanggalBerakhir,
                                     Wilayah = hargaPasar.Wilayah,
@@ -418,6 +429,7 @@ namespace SIMTernakAyam.Services
                             {
                                 Id = hargaPasar.Id,
                                 HargaPerEkor = hargaPasar!.HargaPerEkor,
+                                HargaPerKg = hargaPasar.HargaPerKg,
                                 TanggalMulai = hargaPasar.TanggalMulai,
                                 TanggalBerakhir = hargaPasar.TanggalBerakhir,
                                 Wilayah = hargaPasar.Wilayah,
@@ -448,8 +460,11 @@ namespace SIMTernakAyam.Services
                 }
 
                 // Hitung rata-rata
-                totalKeuntungan.RataRataBeratPerEkor = totalKeuntungan.TotalAyam > 0 ? 
+                totalKeuntungan.RataRataBeratPerEkor = totalKeuntungan.TotalAyam > 0 ?
                     totalKeuntungan.TotalBerat / totalKeuntungan.TotalAyam : 0;
+
+                // Hitung rata-rata harga per ekor dari daftar harga pasar
+                totalKeuntungan.RataRataHargaPerEkor = daftarHarga.Any() ? daftarHarga.Average() : 0;
 
                 var rataRataHarga = daftarHarga.Any() ? daftarHarga.Average() : 0;
 
@@ -478,7 +493,8 @@ namespace SIMTernakAyam.Services
                         var harga = await _hargaPasarRepository.GetHargaAktifByTanggalAsync(panen.TanggalPanen);
                         if (harga != null)
                         {
-                            totalKeuntunganSebelumnya += (panen.JumlahEkorPanen * panen.BeratRataRata * harga.HargaPerEkor);
+                            // Gunakan HargaPerKg untuk perhitungan berbasis berat
+                            totalKeuntunganSebelumnya += (panen.JumlahEkorPanen * panen.BeratRataRata * harga.HargaPerKg);
                         }
                     }
 
@@ -605,14 +621,15 @@ namespace SIMTernakAyam.Services
                         if (harga != null)
                         {
                             var totalBerat = panen.JumlahEkorPanen * panen.BeratRataRata;
-                            var pendapatan = totalBerat * harga.HargaPerEkor;
-                            
+                            // Gunakan HargaPerKg untuk perhitungan berbasis berat
+                            var pendapatan = totalBerat * harga.HargaPerKg;
+
                             totalKeuntunganBulan += pendapatan;
                             totalAyamBulan += panen.JumlahEkorPanen;
                             totalBeratBulan += totalBerat;
                             hariPanen.Add(panen.TanggalPanen.Date);
-                            hargaBulan.Add(harga.HargaPerEkor);
-                            daftarHargaTahunan.Add(harga.HargaPerEkor);
+                            hargaBulan.Add(harga.HargaPerKg);
+                            daftarHargaTahunan.Add(harga.HargaPerKg);
                         }
                     }
 
@@ -633,6 +650,7 @@ namespace SIMTernakAyam.Services
                     totalTahunan.TotalPendapatan += totalKeuntunganBulan;
                     totalTahunan.TotalAyam += totalAyamBulan;
                     totalTahunan.TotalBerat += totalBeratBulan;
+                    totalTahunan.TotalPanen += panenBulan.Count();
                 }
 
                 // Cari bulan terbaik dan terburuk
@@ -666,6 +684,9 @@ namespace SIMTernakAyam.Services
 
                 totalTahunan.RataRataBeratPerEkor = totalTahunan.TotalAyam > 0 ? 
                     totalTahunan.TotalBerat / totalTahunan.TotalAyam : 0;
+
+                totalTahunan.RataRataHargaPerEkor = totalTahunan.TotalAyam > 0 ?
+                    totalTahunan.TotalPendapatan / totalTahunan.TotalAyam : 0;
 
                 var ringkasanTahunan = new RingkasanKeuntunganTahunanDto
                 {

@@ -73,7 +73,8 @@ namespace SIMTernakAyam.Services
                 return new ValidationResult { IsValid = false, ErrorMessage = "Jumlah operasional harus lebih dari 0." };
             }
 
-            if (entity.Tanggal > DateTime.UtcNow)
+            // Compare dates only to avoid timezone issues
+            if (entity.Tanggal.Date > DateTime.UtcNow.Date)
             {
                 return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal operasional tidak boleh di masa depan." };
             }
@@ -153,7 +154,8 @@ namespace SIMTernakAyam.Services
                 return new ValidationResult { IsValid = false, ErrorMessage = "Jumlah operasional harus lebih dari 0." };
             }
 
-            if (entity.Tanggal > DateTime.UtcNow)
+            // Compare dates only to avoid timezone issues
+            if (entity.Tanggal.Date > DateTime.UtcNow.Date)
             {
                 return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal operasional tidak boleh di masa depan." };
             }

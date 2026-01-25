@@ -609,18 +609,52 @@ namespace SIMTernakAyam.Services
             var calculationEndDate = tanggalSelesai ?? DateTime.Now;
 
             // Calculate Expenses
+            // 1. Get Specific Expenses for this Kandang
             var expenses = await _context.Biayas
                 .Where(b => b.KandangId == ayam.KandangId &&
                             b.Tanggal >= tanggalMulai &&
                             b.Tanggal <= calculationEndDate)
                 .ToListAsync();
 
-            var totalBiaya = expenses.Sum(b => b.Jumlah);
+            // 2. Get Global Expenses (KandangId is null) to be allocated
+            var globalExpenses = await _context.Biayas
+                .Where(b => b.KandangId == null &&
+                            b.Tanggal >= tanggalMulai &&
+                            b.Tanggal <= calculationEndDate)
+                .ToListAsync();
 
-            // Breakdown Expenses
-            // Use Contains for simple keyword matching if explicit ID is missing (fallback)
-            var biayaPakan = expenses.Where(b => b.JenisBiaya.Contains("Pakan", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah);
-            var biayaVaksin = expenses.Where(b => b.JenisBiaya.Contains("Vaksin", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah);
+            // 3. Calculate Allocation Ratio
+            // Logic: Distribute global costs based on population of relevant batches (active roughly in the same window)
+            // Since we don't have explicit 'Active' status, we consider batches started within last 60 days of the period end as competitors for resources.
+            var searchStartDate = calculationEndDate.AddDays(-60); 
+            var relevantBatches = await _context.Ayams
+                .Where(a => a.TanggalMasuk >= searchStartDate && a.TanggalMasuk <= calculationEndDate)
+                .Select(a => a.JumlahMasuk)
+                .ToListAsync();
+            
+            var totalRelevantPopulation = relevantBatches.Sum();
+            
+            // If total is somehow 0 or less than current batch (impossible logic but safety check), use current batch
+            if (totalRelevantPopulation < ayam.JumlahMasuk) totalRelevantPopulation = ayam.JumlahMasuk;
+
+            decimal allocationRatio = totalRelevantPopulation > 0 ? (decimal)ayam.JumlahMasuk / totalRelevantPopulation : 1;
+
+            // 4. Combine Expenses
+            decimal totalBiayaSpecific = expenses.Sum(b => b.Jumlah);
+            decimal totalBiayaGlobalAllocated = globalExpenses.Sum(b => b.Jumlah) * allocationRatio;
+            
+            // 5. Apply Allocation
+            var totalBiaya = totalBiayaSpecific + totalBiayaGlobalAllocated;
+
+            // Breakdown Expenses (Include allocation)
+            Func<Models.Biaya, bool, decimal> calcAmount = (b, isGlobal) => isGlobal ? b.Jumlah * allocationRatio : b.Jumlah;
+
+            var biayaPakan = expenses.Where(b => b.JenisBiaya.Contains("Pakan", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah) +
+                             globalExpenses.Where(b => b.JenisBiaya.Contains("Pakan", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah * allocationRatio);
+            
+            var biayaVaksin = expenses.Where(b => b.JenisBiaya.Contains("Vaksin", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah) +
+                              globalExpenses.Where(b => b.JenisBiaya.Contains("Vaksin", StringComparison.OrdinalIgnoreCase)).Sum(b => b.Jumlah * allocationRatio);
+            
             var biayaLain = totalBiaya - biayaPakan - biayaVaksin;
 
             // Calculate Revenue

@@ -60,7 +60,8 @@ namespace SIMTernakAyam.Services
                 return new ValidationResult { IsValid = false, ErrorMessage = "Jumlah biaya harus lebih dari 0." };
             }
 
-            if (entity.Tanggal > DateTime.UtcNow)
+            // Compare dates only to avoid timezone issues
+            if (entity.Tanggal.Date > DateTime.UtcNow.Date)
             {
                 return new ValidationResult { IsValid = false, ErrorMessage = "Tanggal biaya tidak boleh di masa depan." };
             }
